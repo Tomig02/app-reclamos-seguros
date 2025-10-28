@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36603.0 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "app-reclamos-seguros", "app-reclamos-seguros.csproj", "{881F42FC-BCBD-491F-9D6E-5553F1EE194E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{881F42FC-BCBD-491F-9D6E-5553F1EE194E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{881F42FC-BCBD-491F-9D6E-5553F1EE194E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{881F42FC-BCBD-491F-9D6E-5553F1EE194E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{881F42FC-BCBD-491F-9D6E-5553F1EE194E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2CFD27BD-64B1-44A2-8DAF-CB504E1C8AD9}
+	EndGlobalSection
+EndGlobal
