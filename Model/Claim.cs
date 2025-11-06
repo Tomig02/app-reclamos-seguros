@@ -26,23 +26,26 @@ namespace app_reclamos_seguros.Model
         public string Coverage  { get; private set; }
 
 
-        public Claim(string jsonString) 
-        {
-            JObject token = JObject.Parse(jsonString);
+        public Claim() { }
 
-            this.ClaimNumber = (int) token.SelectToken("claim_number");
-            this.Description = (string) token.SelectToken("description");
-            this.Direction = (string) token.SelectToken("direction");
-            this.City = (string) token.SelectToken("city");
-            this.DateAndHour = (DateTime) token.SelectToken("date_and_hour");
-            this.ClientDNI = (int) token.SelectToken("dni");
-            this.ClientName = (string) token.SelectToken("name");
-            this.ClientSurname = (string) token.SelectToken("surname");
-            this.PhoneNumber = (int) token.SelectToken("phone_number");
-            this.Email = (string) token.SelectToken("email");
-            this.PolicyNumber = (int) token.SelectToken("policy_number");
-            this.CompanyName = (string) token.SelectToken("company");
-            this.Coverage = (string) token.SelectToken("coverage");
+        public Claim(string jsonString)
+        {
+            JArray token = JArray.Parse(jsonString);
+            JObject claimObj = (JObject)token[0];
+
+            this.ClaimNumber = claimObj.Value<int>("claim_number")!;
+            this.Description = claimObj.Value<string>("description")!;
+            this.Direction = claimObj.Value<string>("direction")!;
+            this.City = claimObj.Value<string>("city")!;
+            this.DateAndHour = claimObj.Value<DateTime>("date_and_hour")!;
+            this.ClientDNI = claimObj.Value<int>("dni")!;
+            this.ClientName = claimObj.Value<string>("name")!;
+            this.ClientSurname = claimObj.Value<string>("surname")!;
+            this.PhoneNumber = claimObj.Value<int>("phone_number")!;
+            this.Email = claimObj.Value<string>("email")!;
+            this.PolicyNumber = claimObj.Value<int>("policy_number")!;
+            this.CompanyName = claimObj.Value<string>("company")!;
+            this.Coverage = claimObj.Value<string>("coverage")!;
         }
 
         public Claim(int claimNumber, string description, string direction, string city, DateTime dateAndHour, 

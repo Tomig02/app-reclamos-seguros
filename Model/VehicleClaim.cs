@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using System.Text.Json.Serialization;
 
 namespace app_reclamos_seguros.Model
 {
@@ -10,15 +11,20 @@ namespace app_reclamos_seguros.Model
         public string licensePlate;
         public string registeredOwner;
 
-        public VehicleClaim(string jsonString) : base(jsonString) {
-            JObject token = JObject.Parse(jsonString);
 
-            this.vehicleBrand = (string) token.SelectToken("brand");
-            this.vehicleModel = (string) token.SelectToken("model");
-            this.licensePlate = (string) token.SelectToken("license_plate");
-            this.registeredOwner = (string) token.SelectToken("registered_owner");
+        public VehicleClaim() : base() { }
+
+        public VehicleClaim(string jsonString) : base(jsonString) {
+            JArray token = JArray.Parse(jsonString);
+            JObject firstClaim = (JObject)token[0];
+
+            this.vehicleBrand = firstClaim.Value<string>("brand");
+            this.vehicleModel = firstClaim.Value<string>("model");
+            this.licensePlate = firstClaim.Value<string>("license_plate");
+            this.registeredOwner = firstClaim.Value<string>("registered_owner");
         }
 
+        [JsonConstructor]
         public VehicleClaim(int claimNumber, string description, string direction, string city, DateTime dateAndHour,
             int clientDNI, string clientName, string clientSurname, int phoneNumber, string email, int policyNumber,
             string companyName, string coverage, string vehicleBrand, string vehicleModel, string licensePlate, 
