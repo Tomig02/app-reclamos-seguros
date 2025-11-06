@@ -18,10 +18,10 @@ namespace app_reclamos_seguros.Model
             JArray token = JArray.Parse(jsonString);
             JObject firstClaim = (JObject)token[0];
 
-            this.vehicleBrand = firstClaim.Value<string>("brand");
-            this.vehicleModel = firstClaim.Value<string>("model");
-            this.licensePlate = firstClaim.Value<string>("license_plate");
-            this.registeredOwner = firstClaim.Value<string>("registered_owner");
+            this.vehicleBrand = firstClaim.Value<string>("brand")!;
+            this.vehicleModel = firstClaim.Value<string>("model")!;
+            this.licensePlate = firstClaim.Value<string>("license_plate")!;
+            this.registeredOwner = firstClaim.Value<string>("registered_owner")!;
         }
 
         [JsonConstructor]

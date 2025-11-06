@@ -17,7 +17,7 @@ namespace app_reclamos_seguros.Controllers
         }
 
         [HttpGet] [Route("Claim/{claimID}")]
-        public ActionResult<ClaimSearchResultDTO> GetClaimByID(int? claimID)
+        public ActionResult<VehicleClaimDTO> GetClaimByID(int? claimID)
         {
             if(claimID == null) 
             {
@@ -96,8 +96,17 @@ namespace app_reclamos_seguros.Controllers
                 dto.RegisteredOwner
             );
 
-            dbManager.InsertNewCarClaim(newClaim);
-            return Ok("Saved succesfully");
+            try 
+            { 
+                dbManager.InsertNewCarClaim(newClaim);
+                return Ok("Saved succesfully");
+            }
+            catch(DatabaseException ex) 
+            { 
+                return BadRequest($"The database couldnt process the request: {ex.Message}"); 
+            }
+
+            
         }
     }
 }

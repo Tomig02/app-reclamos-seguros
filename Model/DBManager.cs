@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.OpenApi.Any;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Data.SQLite;
 
@@ -46,58 +48,107 @@ namespace app_reclamos_seguros.Model
 
         public void InsertNewCarClaim(VehicleClaim claimData)
         {;
+            bool claimExists = RecordExists("claims", "claim_number", claimData.ClaimNumber);
 
-            SQLiteCommand clientCommand = new SQLiteCommand(@"
-                INSERT INTO clients (dni, name, surname, phone_number, email)
-                VALUES (@dni, @name, @surname, @phone, @mail)
-            ");
-            clientCommand.Parameters.AddWithValue("@dni", claimData.ClientDNI);
-            clientCommand.Parameters.AddWithValue("@name", claimData.ClientName);
-            clientCommand.Parameters.AddWithValue("@surname", claimData.ClientSurname);
-            clientCommand.Parameters.AddWithValue("@phone", claimData.PhoneNumber);
-            clientCommand.Parameters.AddWithValue("@mail", claimData.Email);
+            if (claimExists) 
+            {
+                throw new DatabaseException($"The claim {claimData.ClaimNumber} already exists in the database", new InvalidOperationException());
+            }
+            else
+            {
+                bool clientExists = RecordExists("clients", "dni", claimData.ClientDNI);
+                bool vehicleExists = RecordExists("vehicles", "license_plate", claimData.licensePlate);
+                bool policyExists = RecordExists("policies", "policy_number", claimData.PolicyNumber);
 
-            SQLiteCommand vehicleCommand = new SQLiteCommand( @"
-                INSERT INTO vehicles (brand, model, license_plate, registered_owner)
-                VALUES (@brand, @model, @plate, @owner)
-            ");
-            vehicleCommand.Parameters.AddWithValue("@brand", claimData.vehicleBrand);
-            vehicleCommand.Parameters.AddWithValue("@model", claimData.vehicleModel);
-            vehicleCommand.Parameters.AddWithValue("@plate", claimData.licensePlate);
-            vehicleCommand.Parameters.AddWithValue("@owner", claimData.registeredOwner);
+                if (!clientExists)
+                {
+                    SQLiteCommand clientCommand = CreateInsertCommand(
+                        "INSERT INTO clients (dni, name, surname, phone_number, email) VALUES (@dni, @name, @surname, @phone, @mail)",
+                        ("@dni", claimData.ClientDNI),
+                        ("@name", claimData.ClientName),
+                        ("@surname", claimData.ClientSurname),
+                        ("@phone", claimData.PhoneNumber),
+                        ("@mail", claimData.Email)
+                    );
+                    InsertQuery(clientCommand);
+                }
 
-            SQLiteCommand policyCommand = new SQLiteCommand(@"
-                INSERT INTO policies (policy_number, company, coverage)
-                VALUES (@policy, @company, @coverage)
-            ");
-            policyCommand.Parameters.AddWithValue("@policy", claimData.PolicyNumber);
-            policyCommand.Parameters.AddWithValue("@company", claimData.CompanyName);
-            policyCommand.Parameters.AddWithValue("@coverage", claimData.Coverage);
+                if (!vehicleExists)
+                {
+                    SQLiteCommand vehicleCommand = CreateInsertCommand(
+                        "INSERT INTO vehicles (brand, model, license_plate, registered_owner) VALUES (@brand, @model, @plate, @owner)",
+                        ("@brand", claimData.vehicleBrand),
+                        ("@model", claimData.vehicleModel),
+                        ("@plate", claimData.licensePlate),
+                        ("@owner", claimData.registeredOwner)
+                    );
+                    InsertQuery(vehicleCommand);
+                }
 
-            SQLiteCommand fullCommand = new SQLiteCommand(@"
-                WITH 
-                new_client AS ( SELECT client_id FROM clients WHERE clients.dni = @clientDNI),
-                new_vehicle AS ( SELECT vehicle_id FROM vehicles WHERE vehicles.license_plate = @carPlate),
-                new_policy AS (SELECT policy_id FROM policies WHERE policies.policy_number = @policy)
-                
-                INSERT INTO claims (claim_number, description, direction, city, date_and_hour, policy_id, vehicle_id, client_id)
-                SELECT @claim, @description, @direction, @city, @dateAndHour, 
-                new_policy.policy_id, new_vehicle.vehicle_id, new_client.client_id
-                FROM new_policy, new_vehicle, new_client;    
-            ");
-            fullCommand.Parameters.AddWithValue("@clientDNI", claimData.ClientDNI);
-            fullCommand.Parameters.AddWithValue("@carPlate", claimData.licensePlate);
-            fullCommand.Parameters.AddWithValue("@policy", claimData.PolicyNumber);
-            fullCommand.Parameters.AddWithValue("@claim", claimData.ClaimNumber);
-            fullCommand.Parameters.AddWithValue("@description", claimData.Description);
-            fullCommand.Parameters.AddWithValue("@direction", claimData.Direction);
-            fullCommand.Parameters.AddWithValue("@city", claimData.City);
-            fullCommand.Parameters.AddWithValue("@dateAndHour", claimData.DateAndHour);
+                if (!policyExists)
+                {
+                    SQLiteCommand policyCommand = CreateInsertCommand(
+                        "INSERT INTO policies (policy_number, company, coverage) VALUES (@policy, @company, @coverage)",
+                        ("@policy", claimData.PolicyNumber),
+                        ("@company", claimData.CompanyName),
+                        ("@coverage", claimData.Coverage)
+                    );
 
-            InsertQuery(clientCommand);
-            InsertQuery(vehicleCommand);
-            InsertQuery(policyCommand);
-            InsertQuery(fullCommand);
+                    InsertQuery(policyCommand);
+                }
+
+                var fullCommand = CreateInsertCommand(
+                    @"
+                    WITH 
+                        new_client AS (SELECT client_id FROM clients WHERE dni = @clientDNI),
+                        new_vehicle AS (SELECT vehicle_id FROM vehicles WHERE license_plate = @carPlate),
+                        new_policy AS (SELECT policy_id FROM policies WHERE policy_number = @policy)
+                    
+                    INSERT INTO claims (claim_number, description, direction, city, date_and_hour, policy_id, vehicle_id, client_id)
+                    SELECT @claim, @description, @direction, @city, @dateAndHour, 
+                           new_policy.policy_id, new_vehicle.vehicle_id, new_client.client_id
+                    FROM new_policy, new_vehicle, new_client
+                    ",
+                    ("@clientDNI", claimData.ClientDNI),
+                    ("@carPlate", claimData.licensePlate),
+                    ("@policy", claimData.PolicyNumber),
+                    ("@claim", claimData.ClaimNumber),
+                    ("@description", claimData.Description),
+                    ("@direction", claimData.Direction),
+                    ("@city", claimData.City),
+                    ("@dateAndHour", claimData.DateAndHour)
+                );
+
+                InsertQuery(fullCommand);
+            }
+        }
+
+        private SQLiteCommand CreateInsertCommand(string query, params (string param, object value)[] parameters)
+        {
+            var command = new SQLiteCommand(query, sqlite);
+            foreach (var (param, value) in parameters)
+            {
+                command.Parameters.AddWithValue(param, value);
+            }
+            return command;
+        }
+        private bool RecordExists(string table, string column, object value)
+        {
+            var command = new SQLiteCommand($"SELECT EXISTS(SELECT 1 FROM {table} WHERE {column} = @value)", sqlite);
+            command.Parameters.AddWithValue("@value", value);
+
+            try
+            {
+                sqlite.Open();
+                int count = Convert.ToInt32(command.ExecuteScalar());
+                sqlite.Close();
+                return count == 1;
+            }
+            catch(SQLiteException ex)
+            {
+                throw new DatabaseException($"There was an error executing query: {command.CommandText}", ex);
+            }
+            
         }
 
         public string SelectQuery(SQLiteCommand cmd) 
@@ -114,7 +165,7 @@ namespace app_reclamos_seguros.Model
             }
             catch (SQLiteException ex)
             {
-                //exception
+                throw new DatabaseException($"There was an error executing query: {cmd.CommandText}", ex);
             }
 
             sqlite.Close();
@@ -131,9 +182,17 @@ namespace app_reclamos_seguros.Model
             }
             catch(SQLiteException ex)
             {
-                //exception
+                throw new DatabaseException($"There was an error executing query: {cmd.CommandText}", ex);
             }
             sqlite.Close();
+        }
+    }
+
+    public class DatabaseException : Exception
+    {
+        public DatabaseException(string message, Exception innerException) : base(message, innerException) 
+        {
+
         }
     }
 }
