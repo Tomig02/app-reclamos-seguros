@@ -1,5 +1,6 @@
 using app_reclamos_seguros.Model;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
 
@@ -25,7 +26,7 @@ namespace app_reclamos_seguros.Controllers
             }
             else
             {
-                string jsonString = dbManager.SelectCarClaimByID((int)claimID);
+                string jsonString = dbManager.SelectCarClaimByNumber((int)claimID);
 
                 Console.WriteLine(jsonString);
                 if (jsonString == "")
@@ -67,6 +68,32 @@ namespace app_reclamos_seguros.Controllers
             return Ok(search);
         }
 
+        [HttpGet] [Route("ClaimEntries/{claimNum}")]
+        public ActionResult<ClaimReportEntryDTO[]> GetAllClaimEntries(int claimNum)
+        {
+            try
+            {
+                string entriesJson = dbManager.SelectClaimEntries(claimNum);
+                JArray a = JArray.Parse(entriesJson);
+                List<ClaimReportEntryDTO> entryList = new List<ClaimReportEntryDTO>();
+                foreach (JObject item in JArray.Parse(entriesJson))
+                {
+                    entryList.Add(new ClaimReportEntryDTO(
+                        (string) item.GetValue("comment")!, 
+                        claimNum, 
+                        (DateTime)item.GetValue("date_and_time")!)
+                    );
+                }
+
+                return Ok(entryList);
+            }
+            catch (DatabaseException ex)
+            {
+                return BadRequest($"The database couldnt process the request: {ex.Message}");
+            }
+            
+        }
+
         [HttpPost] [Route("NewClaim")]
         public IActionResult AddNewCarClaim([FromBody] VehicleClaimDTO dto)
         {
@@ -105,8 +132,30 @@ namespace app_reclamos_seguros.Controllers
             { 
                 return BadRequest($"The database couldnt process the request: {ex.Message}"); 
             }
+        }
 
-            
+        [HttpPost][Route("NewReportEntry")]
+        public IActionResult AddNewEntryToClaim([FromBody] ClaimReportEntryDTO dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var newEntry = new ClaimReportEntry(
+                dto.Comment,
+                dto.ClaimNumber
+            );
+
+            try
+            {
+                dbManager.InsertNewClaimReportEntry(newEntry);
+                return Ok("Saved succesfully");
+            }
+            catch (DatabaseException ex)
+            {
+                return BadRequest($"The database couldnt process the request: {ex.Message}");
+            }
         }
     }
 }

@@ -31,3 +31,17 @@ Content-Type: application/json
     "licensePlate": "aaa111", 
     "registeredOwner": "me"
 }
+
+###
+
+GET {{hostURL}}/Claim/ClaimEntries/4321
+Accept: application/json
+
+###
+
+POST {{hostURL}}/Claim/NewReportEntry
+Content-Type: application/json
+{
+    "ClaimNumber": 4321, 
+    "Comment": "some comment"
+}

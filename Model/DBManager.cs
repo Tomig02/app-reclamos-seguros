@@ -1,4 +1,5 @@
-﻿using Microsoft.OpenApi.Any;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.OpenApi.Any;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Data;
@@ -31,7 +32,7 @@ namespace app_reclamos_seguros.Model
             return SelectQuery(selectCommand);
         }
 
-        public string SelectCarClaimByID(int claimID) 
+        public string SelectCarClaimByNumber(int claimID) 
         {
             SQLiteCommand selectCommand = new SQLiteCommand( @"
                 SELECT * FROM claims JOIN clients, vehicles, policies 
@@ -45,6 +46,60 @@ namespace app_reclamos_seguros.Model
             return SelectQuery(selectCommand);
         }
 
+        public string SelectClaimEntries(int claimNumber) 
+        {
+            SQLiteCommand selectClaimID = new SQLiteCommand(@"
+                SELECT claim_id FROM claims WHERE claim_number = @claim 
+            ");
+            selectClaimID.Parameters.AddWithValue("@claim", claimNumber);
+
+            int claimID;
+            var resultArray = JArray.Parse(SelectQuery(selectClaimID));
+
+            if (resultArray.Count > 0)
+            {
+                claimID = (int)resultArray[0]["claim_id"]!;
+
+                SQLiteCommand selectCommand = new SQLiteCommand(@"
+                    SELECT * FROM claim_entries WHERE claim_entries.claim_id = @claim
+                ");
+                selectCommand.Parameters.AddWithValue("@claim", claimID);
+
+                return SelectQuery(selectCommand);
+            }
+            else
+            {
+                throw new DatabaseException($"The claim {claimNumber} doesn't exist", new InvalidOperationException());
+            }
+        }
+
+        public void InsertNewClaimReportEntry(ClaimReportEntry newReport)
+        {
+            SQLiteCommand selectClaimID = new SQLiteCommand(@"
+                SELECT claim_id FROM claims WHERE claim_number = @claim 
+            ");
+            selectClaimID.Parameters.AddWithValue("@claim", newReport.ClaimNumber);
+
+            int claimID;
+            var resultArray = JArray.Parse(SelectQuery(selectClaimID));
+
+            if (resultArray.Count > 0)
+            {
+                claimID = (int)resultArray[0]["claim_id"]!;
+
+                SQLiteCommand reportCommand = CreateInsertCommand(
+                    "INSERT INTO claim_entries (claim_id, comment, date_and_time) VALUES (@claim, @comment, @datetime)",
+                    ("@claim", claimID),
+                    ("@comment", newReport.Comment),
+                    ("@datetime", newReport.DateAndTime)
+                );
+                InsertQuery(reportCommand);
+            }
+            else
+            {
+                throw new DatabaseException($"The claim {newReport.ClaimNumber} doesn't exist", new InvalidOperationException());
+            }
+        }
 
         public void InsertNewCarClaim(VehicleClaim claimData)
         {;
