@@ -1,9 +1,10 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Data;
+﻿using Newtonsoft.Json.Linq;
 
 namespace app_reclamos_seguros.Model
 {
+    /// <summary>
+    /// Base class for any claim type
+    /// </summary>
     public abstract class Claim
     {
         // claim data
@@ -25,9 +26,15 @@ namespace app_reclamos_seguros.Model
         public string CompanyName { get; private set; }
         public string Coverage  { get; private set; }
 
-
+        /// <summary>
+        /// Constructor meant for [frombody] deserialization
+        /// </summary>
         public Claim() { }
 
+        /// <summary>
+        /// The constructor meant for the creation of a claim with data coming from the database
+        /// </summary>
+        /// <param name="jsonString"> JSON formated string with the data of the claim</param>
         public Claim(string jsonString)
         {
             JArray token = JArray.Parse(jsonString);
@@ -48,6 +55,9 @@ namespace app_reclamos_seguros.Model
             this.Coverage = claimObj.Value<string>("coverage")!;
         }
 
+        /// <summary>
+        /// The constructor meant for the creation of a claim with data coming from the controller/s
+        /// </summary>
         public Claim(int claimNumber, string description, string direction, string city, DateTime dateAndHour, 
             int clientDNI, string clientName, string clientSurname, int phoneNumber, string email, int policyNumber, 
             string companyName, string coverage)

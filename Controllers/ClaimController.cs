@@ -1,11 +1,14 @@
 using app_reclamos_seguros.Model;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
 
 
 namespace app_reclamos_seguros.Controllers
 {
+
+    /// <summary>
+    /// Controller handling all the interactions related to the insurance claims
+    /// </summary>
     [ApiController]
     [Route("[controller]")]
     public class ClaimController : ControllerBase
@@ -17,6 +20,11 @@ namespace app_reclamos_seguros.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Searchs for a claim using it's assigned number and returns it's data in JSON format
+        /// </summary>
+        /// <param name="claimID">The claim number asigned by the insurance company</param>
+        /// <returns></returns>
         [HttpGet] [Route("Claim/{claimID}")]
         public ActionResult<VehicleClaimDTO> GetClaimByID(int? claimID)
         {
@@ -61,6 +69,10 @@ namespace app_reclamos_seguros.Controllers
             }
         }
 
+        /// <summary>
+        /// Returns identifying data of all saved claims
+        /// </summary>
+        /// <returns> JSON data of the search result dto </returns>
         [HttpGet] [Route("AllClaims")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaims()
         {
@@ -68,6 +80,11 @@ namespace app_reclamos_seguros.Controllers
             return Ok(search);
         }
 
+        /// <summary>
+        /// Search for all the event entries related to the specified claim number
+        /// </summary>
+        /// <param name="claimNum"> The number asigned to the claim by the insurance company </param>
+        /// <returns></returns>
         [HttpGet] [Route("ClaimEntries/{claimNum}")]
         public ActionResult<ClaimReportEntryDTO[]> GetAllClaimEntries(int claimNum)
         {
@@ -75,6 +92,8 @@ namespace app_reclamos_seguros.Controllers
             {
                 string entriesJson = dbManager.SelectClaimEntries(claimNum);
                 JArray a = JArray.Parse(entriesJson);
+
+                // parse the json array into the claim entry dto
                 List<ClaimReportEntryDTO> entryList = new List<ClaimReportEntryDTO>();
                 foreach (JObject item in JArray.Parse(entriesJson))
                 {
@@ -94,6 +113,11 @@ namespace app_reclamos_seguros.Controllers
             
         }
 
+        /// <summary>
+        /// Receive the complete data related to a vehicle claim and save it into the database
+        /// </summary>
+        /// <param name="dto"> The DTO for vehicle claims filled from the request's body </param>
+        /// <returns> The resulting state of the requested action </returns>
         [HttpPost] [Route("NewClaim")]
         public IActionResult AddNewCarClaim([FromBody] VehicleClaimDTO dto)
         {
@@ -134,6 +158,11 @@ namespace app_reclamos_seguros.Controllers
             }
         }
 
+        /// <summary>
+        /// Receive the data of a new report entry of a claim, and save it into the database
+        /// </summary>
+        /// <param name="dto"> The data of a claim's new report entry </param>
+        /// <returns> The resulting state of the requested action </returns>
         [HttpPost][Route("NewReportEntry")]
         public IActionResult AddNewEntryToClaim([FromBody] ClaimReportEntryDTO dto)
         {

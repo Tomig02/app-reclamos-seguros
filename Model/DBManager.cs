@@ -1,27 +1,44 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.OpenApi.Any;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Data;
+using System.Data.Common;
 using System.Data.SQLite;
 
 namespace app_reclamos_seguros.Model
 {
+    /// <summary>
+    /// Middleware handling the sql-querying and interactions with the database
+    /// </summary>
     public class DBManager
     {
         private SQLiteConnection sqlite;
 
+        /// <summary>
+        /// Creates a dbmanager object, creating and storing a connection with the database
+        /// </summary>
         public DBManager()
         {
             string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\Public\SQLite.db");
             sqlite = new SQLiteConnection($"Data Source={Path.GetFullPath(dbPath)}");
         }
 
+        /// <summary>
+        /// receives a DataTable object and serializes it into a JSON string
+        /// </summary>
+        /// <param name="data"> Datable object holding the data </param>
+        /// <returns> A JSON formated string </returns>
         private string ToJsonString(DataTable data) 
         {
             return JsonConvert.SerializeObject(data); ;
         }
 
+        /// <summary>
+        /// Returns a reduced set of the data of a stored claim, meant for identifying a claim
+        /// </summary>
+        /// <returns> 
+        /// JSON formated string: 
+        /// [ {"claim_number": int, "date_and_hour": string(UTC−03:00), "name": string, "surname": string}, ... ]
+        /// </returns>
         public string SelectListAllCarClaims()
         {
             SQLiteCommand selectCommand = new SQLiteCommand($@"
@@ -32,7 +49,15 @@ namespace app_reclamos_seguros.Model
             return SelectQuery(selectCommand);
         }
 
-        public string SelectCarClaimByNumber(int claimID) 
+        /// <summary>
+        /// Returns the complete data of one specified claim, selected from the database using the claim number
+        /// </summary>
+        /// <param name="claimNumber"> The claim number asigned by the insurance company </param>
+        /// <returns>
+        /// JSON formated string:
+        /// [ { ...claimTableRow, ...clientsTableRow, ...vehiclesTableRow, ...policiesTableRow} ]
+        /// </returns>
+        public string SelectCarClaimByNumber(int claimNumber) 
         {
             SQLiteCommand selectCommand = new SQLiteCommand( @"
                 SELECT * FROM claims JOIN clients, vehicles, policies 
@@ -41,25 +66,28 @@ namespace app_reclamos_seguros.Model
                 AND claims.vehicle_id = vehicles.vehicle_id 
                 AND claims.policy_id = policies.policy_id
             ");
-            selectCommand.Parameters.AddWithValue("@claimID", claimID);
+            selectCommand.Parameters.AddWithValue("@claimID", claimNumber);
             
             return SelectQuery(selectCommand);
         }
 
+        /// <summary>
+        /// Returns a list of all the entries of a specified claim, identifyed by the claim number
+        /// </summary>
+        /// <param name="claimNumber"> The claim number asigned by the insurance company </param>
+        /// <returns>
+        /// JSON formated string:
+        /// [ {"entry_id": int, "claim_id": int, "comment": string, "date_and_time": string(UTC−03:00)} ]
+        /// </returns>
+        /// <exception cref="DatabaseException"></exception>
         public string SelectClaimEntries(int claimNumber) 
         {
-            SQLiteCommand selectClaimID = new SQLiteCommand(@"
-                SELECT claim_id FROM claims WHERE claim_number = @claim 
-            ");
-            selectClaimID.Parameters.AddWithValue("@claim", claimNumber);
+            // identify the claim's database id, for later use in the search for the entries
+            int claimID = SelectFromEntityGetID("claims", "claim_id", "claim_number", claimNumber);
 
-            int claimID;
-            var resultArray = JArray.Parse(SelectQuery(selectClaimID));
-
-            if (resultArray.Count > 0)
+            // if the claim exists in the database
+            if (claimID != -1)
             {
-                claimID = (int)resultArray[0]["claim_id"]!;
-
                 SQLiteCommand selectCommand = new SQLiteCommand(@"
                     SELECT * FROM claim_entries WHERE claim_entries.claim_id = @claim
                 ");
@@ -69,25 +97,24 @@ namespace app_reclamos_seguros.Model
             }
             else
             {
-                throw new DatabaseException($"The claim {claimNumber} doesn't exist", new InvalidOperationException());
+                throw new DatabaseException($"The claim {claimNumber} couldn't be found", new InvalidOperationException());
             }
         }
 
+        /// <summary>
+        /// Insert a new comment entry in the database for a specific claim 
+        /// </summary>
+        /// <param name="newReport"> The new entry object to be saved </param>
+        /// <exception cref="DatabaseException"> The database doesn't have a claim with the specified number </exception>
         public void InsertNewClaimReportEntry(ClaimReportEntry newReport)
         {
-            SQLiteCommand selectClaimID = new SQLiteCommand(@"
-                SELECT claim_id FROM claims WHERE claim_number = @claim 
-            ");
-            selectClaimID.Parameters.AddWithValue("@claim", newReport.ClaimNumber);
+            // identify the claim's database id, for later use in the search for the entries
+            int claimID = SelectFromEntityGetID("claims", "claim_id", "claim_number", newReport.ClaimNumber);
 
-            int claimID;
-            var resultArray = JArray.Parse(SelectQuery(selectClaimID));
-
-            if (resultArray.Count > 0)
+            // if the claim exists in the database
+            if (claimID != -1)
             {
-                claimID = (int)resultArray[0]["claim_id"]!;
-
-                SQLiteCommand reportCommand = CreateInsertCommand(
+                SQLiteCommand reportCommand = CreateCommand(
                     "INSERT INTO claim_entries (claim_id, comment, date_and_time) VALUES (@claim, @comment, @datetime)",
                     ("@claim", claimID),
                     ("@comment", newReport.Comment),
@@ -97,10 +124,15 @@ namespace app_reclamos_seguros.Model
             }
             else
             {
-                throw new DatabaseException($"The claim {newReport.ClaimNumber} doesn't exist", new InvalidOperationException());
+                throw new DatabaseException($"The claim {newReport.ClaimNumber} couldn't be found", new InvalidOperationException());
             }
         }
 
+        /// <summary>
+        /// Inserts the complete data of a claim into the database
+        /// </summary>
+        /// <param name="claimData"> the object containing the claim's data </param>
+        /// <exception cref="DatabaseException"> A claim with the same claim number already exists in the database </exception>
         public void InsertNewCarClaim(VehicleClaim claimData)
         {;
             bool claimExists = RecordExists("claims", "claim_number", claimData.ClaimNumber);
@@ -117,7 +149,7 @@ namespace app_reclamos_seguros.Model
 
                 if (!clientExists)
                 {
-                    SQLiteCommand clientCommand = CreateInsertCommand(
+                    SQLiteCommand clientCommand = CreateCommand(
                         "INSERT INTO clients (dni, name, surname, phone_number, email) VALUES (@dni, @name, @surname, @phone, @mail)",
                         ("@dni", claimData.ClientDNI),
                         ("@name", claimData.ClientName),
@@ -130,7 +162,7 @@ namespace app_reclamos_seguros.Model
 
                 if (!vehicleExists)
                 {
-                    SQLiteCommand vehicleCommand = CreateInsertCommand(
+                    SQLiteCommand vehicleCommand = CreateCommand(
                         "INSERT INTO vehicles (brand, model, license_plate, registered_owner) VALUES (@brand, @model, @plate, @owner)",
                         ("@brand", claimData.vehicleBrand),
                         ("@model", claimData.vehicleModel),
@@ -142,7 +174,7 @@ namespace app_reclamos_seguros.Model
 
                 if (!policyExists)
                 {
-                    SQLiteCommand policyCommand = CreateInsertCommand(
+                    SQLiteCommand policyCommand = CreateCommand(
                         "INSERT INTO policies (policy_number, company, coverage) VALUES (@policy, @company, @coverage)",
                         ("@policy", claimData.PolicyNumber),
                         ("@company", claimData.CompanyName),
@@ -152,7 +184,7 @@ namespace app_reclamos_seguros.Model
                     InsertQuery(policyCommand);
                 }
 
-                var fullCommand = CreateInsertCommand(
+                var fullCommand = CreateCommand(
                     @"
                     WITH 
                         new_client AS (SELECT client_id FROM clients WHERE dni = @clientDNI),
@@ -178,7 +210,7 @@ namespace app_reclamos_seguros.Model
             }
         }
 
-        private SQLiteCommand CreateInsertCommand(string query, params (string param, object value)[] parameters)
+        private SQLiteCommand CreateCommand(string query, params (string param, object value)[] parameters)
         {
             var command = new SQLiteCommand(query, sqlite);
             foreach (var (param, value) in parameters)
@@ -187,6 +219,15 @@ namespace app_reclamos_seguros.Model
             }
             return command;
         }
+
+        /// <summary>
+        /// Checks if a table contains a row with the specified value
+        /// </summary>
+        /// <param name="table"> The table to search in </param>
+        /// <param name="column"> The column that holds the searched data</param>
+        /// <param name="value"> The value to match </param>
+        /// <returns> true if the value exists in any row, false if it doesn't </returns>
+        /// <exception cref="DatabaseException"> The database couldn't run the query, contains an SQLiteException </exception>
         private bool RecordExists(string table, string column, object value)
         {
             var command = new SQLiteCommand($"SELECT EXISTS(SELECT 1 FROM {table} WHERE {column} = @value)", sqlite);
@@ -206,7 +247,13 @@ namespace app_reclamos_seguros.Model
             
         }
 
-        public string SelectQuery(SQLiteCommand cmd) 
+        /// <summary>
+        /// Handles the execution of a SELECT query
+        /// </summary>
+        /// <param name="cmd"> the command object with the query to be executed </param>
+        /// <returns> a JSON formated string with the array of selected rows </returns>
+        /// <exception cref="DatabaseException"> The database couldn't run the query, contains an SQLiteException </exception>
+        private string SelectQuery(SQLiteCommand cmd) 
         {
             SQLiteDataAdapter ad;
             DataTable dt = new DataTable();
@@ -227,7 +274,13 @@ namespace app_reclamos_seguros.Model
             return ToJsonString(dt);
         }
         
-        public void InsertQuery(SQLiteCommand cmd) {
+        /// <summary>
+        /// Handles the execution of a INSERT instruction
+        /// </summary>
+        /// <param name="cmd"> the command object with the query to be executed </param>
+        /// <exception cref="DatabaseException"> The database couldn't run the query, contains an SQLiteException </exception>
+        private void InsertQuery(SQLiteCommand cmd) 
+        {
             cmd.Connection = sqlite;
 
             try
@@ -241,13 +294,40 @@ namespace app_reclamos_seguros.Model
             }
             sqlite.Close();
         }
+
+        /// <summary>
+        /// Look for the database id of a specified table's row
+        /// </summary>
+        /// <param name="table"> The table's name as it exists in the database </param>
+        /// <param name="idColumn"> The column's name for the SELECT instruction</param>
+        /// <param name="whereColumn"> the column name for the WHERE instruction</param>
+        /// <param name="whereValue"> the desired value for the WHERE column </param>
+        /// <returns> the int value of the id, being -1 if not found </returns>
+        /// <exception cref="InvalidOperationException"> The args didn't get a result from the database (wrong args or no rows inserted with the value) </exception>
+        private int SelectFromEntityGetID(string table, string selectColumn, string whereColumn, object whereValue)
+        {
+            var command = CreateCommand(
+                $"SELECT @selectCol FROM @table WHERE @whereCol = @value",
+                ("@value", whereValue),
+                ("@table", table),
+                ("@selectCol", selectColumn),
+                ("@whereCol", whereColumn)
+            );
+
+            try
+            {
+                var result = JArray.Parse(SelectQuery(command));
+
+                if (result.Count == 0)
+                    return -1;
+                return result[0][selectColumn]!.Value<int>();
+            }
+            catch (DatabaseException ex) { throw; }
+        }
     }
 
     public class DatabaseException : Exception
     {
-        public DatabaseException(string message, Exception innerException) : base(message, innerException) 
-        {
-
-        }
+        public DatabaseException(string message, Exception innerException) : base(message, innerException) {}
     }
 }

@@ -2,6 +2,9 @@
 
 namespace app_reclamos_seguros.Model
 {
+    /// <summary>
+    /// Data transfer object for any type of vehicular claim
+    /// </summary>
     public class VehicleClaimDTO
     {
         [Required] 

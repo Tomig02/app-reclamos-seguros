@@ -3,6 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace app_reclamos_seguros.Model
 {
+    /// <summary>
+    /// Claim type for any type of vehicular claim
+    /// </summary>
     public class VehicleClaim : Claim
     {
         // car data
@@ -11,9 +14,15 @@ namespace app_reclamos_seguros.Model
         public string licensePlate;
         public string registeredOwner;
 
-
+        /// <summary>
+        /// Constructor meant for [frombody] deserialization
+        /// </summary>
         public VehicleClaim() : base() { }
 
+        /// <summary>
+        /// Constructor meant for instantiation by the database, using a JON formated string
+        /// </summary>
+        /// <param name="jsonString"> JSON formated string with the data of the claim</param>
         public VehicleClaim(string jsonString) : base(jsonString) {
             JArray token = JArray.Parse(jsonString);
             JObject firstClaim = (JObject)token[0];
@@ -24,6 +33,9 @@ namespace app_reclamos_seguros.Model
             this.registeredOwner = firstClaim.Value<string>("registered_owner")!;
         }
 
+        /// <summary>
+        /// Constructor meant for instantiation by the controller
+        /// </summary>
         [JsonConstructor]
         public VehicleClaim(int claimNumber, string description, string direction, string city, DateTime dateAndHour,
             int clientDNI, string clientName, string clientSurname, int phoneNumber, string email, int policyNumber,
