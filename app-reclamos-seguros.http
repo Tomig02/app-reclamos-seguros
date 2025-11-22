@@ -13,7 +13,7 @@ Accept: application/json
 POST {{hostURL}}/Claim/NewClaim/
 Content-Type: application/json
 {
-    "claimNumber": 4321, 
+    "claimNumber": 4323, 
     "description": "some description", 
     "direction": "myplace", 
     "city": "monte", 

@@ -7,7 +7,8 @@ namespace app_reclamos_seguros.Model
     /// </summary>
     public class VehicleClaimDTO
     {
-        [Required] 
+        [Required]
+        [Range(1, int.MaxValue)]
         public required int ClaimNumber { get; set; }
         [Required]
         public string Description { get; set; }
@@ -25,7 +26,8 @@ namespace app_reclamos_seguros.Model
         public string ClientSurname { get; set; }
         [Required] 
         public int PhoneNumber { get; set; }
-        [Required] 
+        [Required]
+        [EmailAddress]
         public string Email { get; set; }
         [Required] 
         public int PolicyNumber { get; set; }

@@ -36,7 +36,6 @@ namespace app_reclamos_seguros.Controllers
             {
                 string jsonString = dbManager.SelectCarClaimByNumber((int)claimID);
 
-                Console.WriteLine(jsonString);
                 if (jsonString == "")
                 {
                     return BadRequest("Claim ID doesn't exist");
@@ -124,7 +123,7 @@ namespace app_reclamos_seguros.Controllers
 
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest("The data model couldn't be validated" + ModelState.ToString());
             }
 
             var newClaim = new VehicleClaim(

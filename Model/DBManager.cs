@@ -3,6 +3,7 @@ using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
+using System.Text;
 
 namespace app_reclamos_seguros.Model
 {
@@ -307,11 +308,8 @@ namespace app_reclamos_seguros.Model
         private int SelectFromEntityGetID(string table, string selectColumn, string whereColumn, object whereValue)
         {
             var command = CreateCommand(
-                $"SELECT @selectCol FROM @table WHERE @whereCol = @value",
-                ("@value", whereValue),
-                ("@table", table),
-                ("@selectCol", selectColumn),
-                ("@whereCol", whereColumn)
+                $"SELECT {selectColumn} FROM {table} WHERE {whereColumn} = @value",
+                ("@value", whereValue)
             );
 
             try
