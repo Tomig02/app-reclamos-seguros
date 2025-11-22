@@ -5,7 +5,7 @@ Accept: application/json
 
 ###
 
-GET {{hostURL}}/Claim/Claim/4321/
+GET {{hostURL}}/Claim/Claim/4323/
 Accept: application/json
 
 ###
@@ -34,7 +34,7 @@ Content-Type: application/json
 
 ###
 
-GET {{hostURL}}/Claim/ClaimEntries/4321
+GET {{hostURL}}/Claim/ClaimEntries/4323
 Accept: application/json
 
 ###

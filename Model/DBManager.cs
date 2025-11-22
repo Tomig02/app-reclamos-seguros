@@ -20,7 +20,39 @@ namespace app_reclamos_seguros.Model
         public DBManager()
         {
             string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\Public\SQLite.db");
-            sqlite = new SQLiteConnection($"Data Source={Path.GetFullPath(dbPath)}");
+            string absolutePath = Path.GetFullPath(dbPath);
+
+            if (File.Exists(absolutePath))
+            {
+                sqlite = new SQLiteConnection($"Data Source={absolutePath}");
+            }
+            else
+            {
+                SQLiteConnection.CreateFile(absolutePath);
+                sqlite = new SQLiteConnection($"Data Source={absolutePath}");
+
+                SQLiteCommand sqlSetupCommand = new SQLiteCommand($@"
+                    CREATE TABLE clients (client_id INTEGER PRIMARY KEY AUTOINCREMENT , dni INTEGER, name TEXT, surname TEXT, phone_number INTEGER, email TEXT);
+                    CREATE TABLE claim_entries (entry_id INTEGER PRIMARY KEY AUTOINCREMENT , claim_id INTEGER, comment TEXT, date_and_time DATETIME,
+	                    FOREIGN KEY (claim_id) REFERENCES claims(claim_id)                     
+                    );
+                    CREATE TABLE vehicles (vehicle_id INTEGER PRIMARY KEY AUTOINCREMENT , brand TEXT, model TEXT, license_plate TEXT, registered_owner TEXT);
+                    CREATE TABLE policies (policy_id INTEGER PRIMARY KEY AUTOINCREMENT, policy_number INTEGER, company TEXT, coverage TEXT);    
+            
+                    CREATE TABLE claims (claim_id INTEGER PRIMARY KEY AUTOINCREMENT, claim_number INTEGER, description TEXT, direction TEXT, city TEXT, date_and_hour DATETIME, 
+	                    policy_id INTEGER, vehicle_id INTEGER, client_id INTEGER, 
+    
+	                    FOREIGN KEY (policy_id) REFERENCES policies(policy_id),
+                        FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id), 
+                        FOREIGN KEY (client_id) REFERENCES clients(client_id)
+                    );
+                ");
+                sqlSetupCommand.Connection = sqlite;
+
+                sqlite.Open();
+                sqlSetupCommand.ExecuteNonQuery();
+                sqlite.Close();
+            }
         }
 
         /// <summary>

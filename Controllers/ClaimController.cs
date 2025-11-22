@@ -36,7 +36,7 @@ namespace app_reclamos_seguros.Controllers
             {
                 string jsonString = dbManager.SelectCarClaimByNumber((int)claimID);
 
-                if (jsonString == "")
+                if (jsonString == "" || jsonString == "[]")
                 {
                     return BadRequest("Claim ID doesn't exist");
                 }
