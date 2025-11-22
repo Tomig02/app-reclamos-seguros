@@ -29,7 +29,8 @@ namespace app_reclamos_seguros.Model
                     (int) item["claim_number"]!,
                     (DateTime) item["date_and_hour"]!,
                     (string) item["name"]!,
-                    (string) item["surname"]!
+                    (string) item["surname"]!,
+                    (bool) item["archived"]!
                 ));
             }
         }
@@ -48,16 +49,19 @@ namespace app_reclamos_seguros.Model
         public string Name { get; set; }
         [Required] 
         public string Surname { get; set; }
+        [Required]
+        public bool Archived { get; set; }
 
         /// <summary>
         /// Creates a search result item holding specific data of a claim for later id
         /// </summary>
-        public ClaimSearchItem(int claimNumber, DateTime dateAndHour, string name, string surname)
+        public ClaimSearchItem(int claimNumber, DateTime dateAndHour, string name, string surname, bool archived)
         {
             this.ClaimID = claimNumber;
             this.DateAndHour = dateAndHour;
             this.Name = name;
             this.Surname = surname;
+            this.Archived = archived;
         }
     }
 }

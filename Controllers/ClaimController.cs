@@ -60,7 +60,8 @@ namespace app_reclamos_seguros.Controllers
                         PolicyNumber = vClaim.PolicyNumber,
                         RegisteredOwner = vClaim.registeredOwner,
                         VehicleBrand = vClaim.vehicleBrand,
-                        VehicleModel = vClaim.vehicleModel
+                        VehicleModel = vClaim.vehicleModel,
+                        Archived = vClaim.Archived
                     };
 
                     return Ok(vClaimDTO);
@@ -143,7 +144,8 @@ namespace app_reclamos_seguros.Controllers
                 dto.VehicleBrand,
                 dto.VehicleModel,
                 dto.LicensePlate,
-                dto.RegisteredOwner
+                dto.RegisteredOwner,
+                archived: false
             );
 
             try 
@@ -181,6 +183,20 @@ namespace app_reclamos_seguros.Controllers
                 return Ok("Saved succesfully");
             }
             catch (DatabaseException ex)
+            {
+                return BadRequest($"The database couldnt process the request: {ex.Message}");
+            }
+        }
+
+        [HttpPost][Route("ArchiveClaim/{claimNum}")]
+        public IActionResult ArchiveClaim( int claimNum)
+        {
+            try
+            {
+                dbManager.ArchiveClaim(claimNum);
+                return Ok("Archived succesfully");
+            }
+            catch(DatabaseException ex)
             {
                 return BadRequest($"The database couldnt process the request: {ex.Message}");
             }

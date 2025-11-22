@@ -1,5 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
@@ -40,7 +42,7 @@ namespace app_reclamos_seguros.Model
                     CREATE TABLE policies (policy_id INTEGER PRIMARY KEY AUTOINCREMENT, policy_number INTEGER, company TEXT, coverage TEXT);    
             
                     CREATE TABLE claims (claim_id INTEGER PRIMARY KEY AUTOINCREMENT, claim_number INTEGER, description TEXT, direction TEXT, city TEXT, date_and_hour DATETIME, 
-	                    policy_id INTEGER, vehicle_id INTEGER, client_id INTEGER, 
+	                    policy_id INTEGER, vehicle_id INTEGER, client_id INTEGER, archived BOOLEAN,
     
 	                    FOREIGN KEY (policy_id) REFERENCES policies(policy_id),
                         FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id), 
@@ -55,6 +57,7 @@ namespace app_reclamos_seguros.Model
             }
         }
 
+
         /// <summary>
         /// receives a DataTable object and serializes it into a JSON string
         /// </summary>
@@ -63,6 +66,22 @@ namespace app_reclamos_seguros.Model
         private string ToJsonString(DataTable data) 
         {
             return JsonConvert.SerializeObject(data); ;
+        }
+
+        public void ArchiveClaim(int claimNum)
+        {
+            bool claimExists = RecordExists("claims", "claim_number", claimNum);
+
+            if (claimExists)
+            {
+                SQLiteCommand updateCommand = CreateCommand(
+                    "UPDATE claims SET archived = true WHERE claims.claim_number = @claim",
+                    ("@claim", claimNum)
+                );
+
+                InsertQuery(updateCommand);
+            }
+            else throw new DatabaseException($"The claim number is not valid", new InvalidOperationException());
         }
 
         /// <summary>
@@ -74,8 +93,8 @@ namespace app_reclamos_seguros.Model
         /// </returns>
         public string SelectListAllCarClaims()
         {
-            SQLiteCommand selectCommand = new SQLiteCommand($@"
-                SELECT claims.claim_number, claims.date_and_hour, clients.name, clients.surname FROM claims JOIN clients
+            SQLiteCommand selectCommand = CreateCommand($@"
+                SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims JOIN clients
                 WHERE claims.client_id = clients.client_id
             ");
 
@@ -92,14 +111,15 @@ namespace app_reclamos_seguros.Model
         /// </returns>
         public string SelectCarClaimByNumber(int claimNumber) 
         {
-            SQLiteCommand selectCommand = new SQLiteCommand( @"
+            SQLiteCommand selectCommand = CreateCommand( @"
                 SELECT * FROM claims JOIN clients, vehicles, policies 
                 WHERE claims.claim_number = @claimID
                 AND claims.client_id = clients.client_id 
                 AND claims.vehicle_id = vehicles.vehicle_id 
                 AND claims.policy_id = policies.policy_id
-            ");
-            selectCommand.Parameters.AddWithValue("@claimID", claimNumber);
+            ",
+                ("@claimID", claimNumber)
+            );
             
             return SelectQuery(selectCommand);
         }
@@ -224,8 +244,8 @@ namespace app_reclamos_seguros.Model
                         new_vehicle AS (SELECT vehicle_id FROM vehicles WHERE license_plate = @carPlate),
                         new_policy AS (SELECT policy_id FROM policies WHERE policy_number = @policy)
                     
-                    INSERT INTO claims (claim_number, description, direction, city, date_and_hour, policy_id, vehicle_id, client_id)
-                    SELECT @claim, @description, @direction, @city, @dateAndHour, 
+                    INSERT INTO claims (claim_number, description, direction, city, date_and_hour, archived, policy_id, vehicle_id, client_id)
+                    SELECT @claim, @description, @direction, @city, @dateAndHour, @archived,
                            new_policy.policy_id, new_vehicle.vehicle_id, new_client.client_id
                     FROM new_policy, new_vehicle, new_client
                     ",
@@ -236,7 +256,8 @@ namespace app_reclamos_seguros.Model
                     ("@description", claimData.Description),
                     ("@direction", claimData.Direction),
                     ("@city", claimData.City),
-                    ("@dateAndHour", claimData.DateAndHour)
+                    ("@dateAndHour", claimData.DateAndHour),
+                    ("@archived", false)
                 );
 
                 InsertQuery(fullCommand);

@@ -13,6 +13,7 @@ namespace app_reclamos_seguros.Model
         public string Direction { get; private set; }
         public string City { get; private set; }
         public DateTime DateAndHour { get; private set; }
+        public bool Archived { get; private set; }
 
         // client data
         public int ClientDNI { get; private set; }
@@ -53,6 +54,7 @@ namespace app_reclamos_seguros.Model
             this.PolicyNumber = claimObj.Value<int>("policy_number")!;
             this.CompanyName = claimObj.Value<string>("company")!;
             this.Coverage = claimObj.Value<string>("coverage")!;
+            this.Archived = claimObj.Value<bool>("archived")!;
         }
 
         /// <summary>
@@ -60,7 +62,7 @@ namespace app_reclamos_seguros.Model
         /// </summary>
         public Claim(int claimNumber, string description, string direction, string city, DateTime dateAndHour, 
             int clientDNI, string clientName, string clientSurname, int phoneNumber, string email, int policyNumber, 
-            string companyName, string coverage)
+            string companyName, string coverage, bool archived)
         {
             this.ClaimNumber = claimNumber;
             this.Description = description;
@@ -75,6 +77,7 @@ namespace app_reclamos_seguros.Model
             this.PolicyNumber = policyNumber;
             this.CompanyName = companyName;
             this.Coverage = coverage;
+            this.Archived = archived;
         }
     }
 }

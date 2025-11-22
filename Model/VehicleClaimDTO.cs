@@ -43,6 +43,8 @@ namespace app_reclamos_seguros.Model
         public string LicensePlate { get; set; }
         [Required] 
         public string RegisteredOwner { get; set; }
+        [Required]
+        public bool Archived { get; set; }
 
 
         public VehicleClaimDTO() { }

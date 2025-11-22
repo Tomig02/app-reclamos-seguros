@@ -40,10 +40,10 @@ namespace app_reclamos_seguros.Model
         public VehicleClaim(int claimNumber, string description, string direction, string city, DateTime dateAndHour,
             int clientDNI, string clientName, string clientSurname, int phoneNumber, string email, int policyNumber,
             string companyName, string coverage, string vehicleBrand, string vehicleModel, string licensePlate, 
-            string registeredOwner) 
+            string registeredOwner, bool archived) 
             : base(claimNumber, description, direction, city, dateAndHour,
             clientDNI, clientName, clientSurname, phoneNumber, email, policyNumber,
-            companyName, coverage)
+            companyName, coverage, archived)
         {
             this.vehicleBrand = vehicleBrand;
             this.vehicleModel = vehicleModel;

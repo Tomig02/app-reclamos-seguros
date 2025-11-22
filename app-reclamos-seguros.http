@@ -5,22 +5,26 @@ Accept: application/json
 
 ###
 
-GET {{hostURL}}/Claim/Claim/4323/
+GET {{hostURL}}/Claim/Claim/4321/
 Accept: application/json
 
 ###
 
+POST {{hostURL}}/Claim/ArchiveClaim/4321/
+Accept: application/json
+
+###
 POST {{hostURL}}/Claim/NewClaim/
 Content-Type: application/json
 {
-    "claimNumber": 4323, 
+    "claimNumber": 4321, 
     "description": "some description", 
     "direction": "myplace", 
     "city": "monte", 
     "dateAndHour": "2025-11-04T18:32:00-03:00" , 
     "clientDNI": 43394080, 
     "clientName": "tomas", 
-    "clientSurname": "guardo",
+    "clientSurname": "pedro",
     "phoneNumber": 227141234, 
     "email": "me@email.com", 
     "policyNumber": 1234, 
@@ -34,7 +38,7 @@ Content-Type: application/json
 
 ###
 
-GET {{hostURL}}/Claim/ClaimEntries/4323
+GET {{hostURL}}/Claim/ClaimEntries/4321
 Accept: application/json
 
 ###
