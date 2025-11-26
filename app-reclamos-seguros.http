@@ -1,6 +1,61 @@
 @hostURL = http://localhost:5249
 
-GET {{hostURL}}/route/
+GET {{hostURL}}/Claim/AllClaims/
 Accept: application/json
 
 ###
+
+GET {{hostURL}}/Claim/AllClaims/Archived
+Accept: application/json
+
+###
+
+GET {{hostURL}}/Claim/AllClaims/Active
+Accept: application/json
+
+###
+
+GET {{hostURL}}/Claim/Claim/4322/
+Accept: application/json
+
+###
+
+POST {{hostURL}}/Claim/ArchiveClaim/4321/
+Accept: application/json
+
+###
+POST {{hostURL}}/Claim/NewClaim/
+Content-Type: application/json
+{
+    "claimNumber": 4323, 
+    "description": "some description", 
+    "direction": "myplace", 
+    "city": "monte", 
+    "dateAndHour": "2025-11-04T18:32:00-03:00" , 
+    "clientDNI": 43394080, 
+    "clientName": "tomas", 
+    "clientSurname": "pedro",
+    "phoneNumber": 227141234, 
+    "email": "me@email.com", 
+    "policyNumber": 1234, 
+    "companyName": "digna", 
+    "coverage": "TD3", 
+    "vehicleBrand": "VW", 
+    "vehicleModel": "Corsa", 
+    "licensePlate": "aaa111", 
+    "registeredOwner": "me"
+}
+
+###
+
+GET {{hostURL}}/Claim/ClaimEntries/4321
+Accept: application/json
+
+###
+
+POST {{hostURL}}/Claim/NewReportEntry
+Content-Type: application/json
+{
+    "ClaimNumber": 4321, 
+    "Comment": "some comment"
+}
