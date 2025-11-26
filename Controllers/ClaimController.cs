@@ -81,6 +81,28 @@ namespace app_reclamos_seguros.Controllers
         }
 
         /// <summary>
+        ///  Returns identifying data of all saved claims that are active
+        /// </summary>
+        /// <returns> JSON data of the search result dto </returns>
+        [HttpGet] [Route("AllClaims/Active")]
+        public ActionResult<ClaimSearchResultDTO> GetAllClaimsActive()
+        {
+            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.SelectListAllCarClaimsFiltered(shouldBeArchived:false));
+            return Ok(search);
+        }
+
+        /// <summary>
+        ///  Returns identifying data of all saved claims that are archived
+        /// </summary>
+        /// <returns> JSON data of the search result dto </returns>
+        [HttpGet] [Route("AllClaims/Archived")]
+        public ActionResult<ClaimSearchResultDTO> GetAllClaimsArchived()
+        {
+            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.SelectListAllCarClaimsFiltered(shouldBeArchived:true));
+            return Ok(search);
+        }
+
+        /// <summary>
         /// Search for all the event entries related to the specified claim number
         /// </summary>
         /// <param name="claimNum"> The number asigned to the claim by the insurance company </param>

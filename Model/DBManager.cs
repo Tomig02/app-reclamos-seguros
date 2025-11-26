@@ -6,6 +6,7 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace app_reclamos_seguros.Model
 {
@@ -97,6 +98,17 @@ namespace app_reclamos_seguros.Model
                 SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims JOIN clients
                 WHERE claims.client_id = clients.client_id
             ");
+
+            return SelectQuery(selectCommand);
+        }
+        public string SelectListAllCarClaimsFiltered(bool shouldBeArchived)
+        {
+            SQLiteCommand selectCommand = CreateCommand($@"
+                SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims JOIN clients
+                WHERE claims.client_id = clients.client_id AND claims.archived = @archived
+            ",
+                ("@archived", shouldBeArchived)
+            );
 
             return SelectQuery(selectCommand);
         }
