@@ -1,12 +1,7 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.Data.SQLite;
-using System.Text;
-using System.Text.Json.Nodes;
 
 namespace app_reclamos_seguros.Model
 {
@@ -101,6 +96,12 @@ namespace app_reclamos_seguros.Model
 
             return SelectQuery(selectCommand);
         }
+
+        /// <summary>
+        /// Select all car claims, filtered by if it's archived or not
+        /// </summary>
+        /// <param name="shouldBeArchived"> If it should the archived or the unarchived</param>
+        /// <returns> A list of filtered claims </returns>
         public string SelectListAllCarClaimsFiltered(bool shouldBeArchived)
         {
             SQLiteCommand selectCommand = CreateCommand($@"
@@ -175,22 +176,20 @@ namespace app_reclamos_seguros.Model
         {
             // identify the claim's database id, for later use in the search for the entries
             int claimID = SelectFromEntityGetID("claims", "claim_id", "claim_number", newReport.ClaimNumber);
+            bool isArchived = IsArchived(newReport.ClaimNumber);
+            
+            if (claimID == -1)
+                throw new DatabaseException($"The claim {newReport.ClaimNumber} couldn't be found", new InvalidOperationException());
+            if (isArchived)
+                throw new DatabaseException($"The claim {newReport.ClaimNumber} is archived and cant receive new entries", new InvalidOperationException());
 
-            // if the claim exists in the database
-            if (claimID != -1)
-            {
-                SQLiteCommand reportCommand = CreateCommand(
+            SQLiteCommand reportCommand = CreateCommand(
                     "INSERT INTO claim_entries (claim_id, comment, date_and_time) VALUES (@claim, @comment, @datetime)",
                     ("@claim", claimID),
                     ("@comment", newReport.Comment),
                     ("@datetime", newReport.DateAndTime)
                 );
-                InsertQuery(reportCommand);
-            }
-            else
-            {
-                throw new DatabaseException($"The claim {newReport.ClaimNumber} couldn't be found", new InvalidOperationException());
-            }
+            InsertQuery(reportCommand);
         }
 
         /// <summary>
@@ -276,6 +275,12 @@ namespace app_reclamos_seguros.Model
             }
         }
 
+        /// <summary>
+        /// Creates a SQLite Command
+        /// </summary>
+        /// <param name="query"> The full query string </param>
+        /// <param name="parameters"> The parameters to be added into the query </param>
+        /// <returns> the created SQLiteCommand object </returns>
         private SQLiteCommand CreateCommand(string query, params (string param, object value)[] parameters)
         {
             var command = new SQLiteCommand(query, sqlite);
@@ -386,6 +391,33 @@ namespace app_reclamos_seguros.Model
                 return result[0][selectColumn]!.Value<int>();
             }
             catch (DatabaseException ex) { throw; }
+        }
+
+        /// <summary>
+        /// Checks if the claim is archived or not
+        /// </summary>
+        /// <param name="claimNum"> the number of the claim assigned by insurance </param>
+        /// <returns> If it's archived or not </returns>
+        /// <exception cref="DatabaseException"> There is an error in the query </exception>
+        private bool IsArchived(int claimNum)
+        {
+            SQLiteCommand command = CreateCommand(@"
+                SELECT EXISTS(SELECT 1 FROM claims WHERE archived = true AND claim_number = @claimNum)
+            ",
+                ("@claimNum", claimNum)
+            );
+
+            try
+            {
+                sqlite.Open();
+                int count = Convert.ToInt32(command.ExecuteScalar());
+                sqlite.Close();
+                return count == 1;
+            }
+            catch (SQLiteException ex)
+            {
+                throw new DatabaseException($"There was an error executing query: {command.CommandText}", ex);
+            }
         }
     }
 
