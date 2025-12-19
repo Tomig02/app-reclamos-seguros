@@ -34,6 +34,11 @@ namespace app_reclamos_seguros.Model
                 ));
             }
         }
+
+        public void Combine(ClaimSearchResultDTO newResults) 
+        {
+            ResultsList = [.. ResultsList, .. newResults.ResultsList];
+        }
     }
 
     /// <summary>

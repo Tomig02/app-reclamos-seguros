@@ -8,14 +8,14 @@ namespace app_reclamos_seguros.Model
     /// <summary>
     /// Middleware handling the sql-querying and interactions with the database
     /// </summary>
-    public class DBManager
+    public class ClaimsRepositorySQLite : IClaimsRepository
     {
         private SQLiteConnection sqlite;
 
         /// <summary>
         /// Creates a dbmanager object, creating and storing a connection with the database
         /// </summary>
-        public DBManager()
+        public ClaimsRepositorySQLite()
         {
             string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\Public\SQLite.db");
             string absolutePath = Path.GetFullPath(dbPath);
@@ -64,15 +64,20 @@ namespace app_reclamos_seguros.Model
             return JsonConvert.SerializeObject(data); ;
         }
 
-        public void ArchiveClaim(int claimNum)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="claimNum"> The identifying claim number </param>
+        /// <param name="shouldBeArchived"> Truth value of if should be archived </param>
+        /// <exception cref="DatabaseException"> The claim to be archived doesn't exist </exception>
+        public void SetArchived(int claimNum, bool shouldBeArchived) 
         {
-            bool claimExists = RecordExists("claims", "claim_number", claimNum);
-
-            if (claimExists)
+            if (RecordExists("claims", "claim_number", claimNum))
             {
                 SQLiteCommand updateCommand = CreateCommand(
-                    "UPDATE claims SET archived = true WHERE claims.claim_number = @claim",
-                    ("@claim", claimNum)
+                    "UPDATE claims SET archived = @value WHERE claims.claim_number = @claim",
+                    ("@claim", claimNum),
+                    ("@value", shouldBeArchived)
                 );
 
                 InsertQuery(updateCommand);
@@ -81,34 +86,20 @@ namespace app_reclamos_seguros.Model
         }
 
         /// <summary>
-        /// Returns a reduced set of the data of a stored claim, meant for identifying a claim
-        /// </summary>
-        /// <returns> 
         /// JSON formated string: 
         /// [ {"claim_number": int, "date_and_hour": string(UTC−03:00), "name": string, "surname": string}, ... ]
-        /// </returns>
-        public string SelectListAllCarClaims()
-        {
-            SQLiteCommand selectCommand = CreateCommand($@"
-                SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims JOIN clients
-                WHERE claims.client_id = clients.client_id
-            ");
-
-            return SelectQuery(selectCommand);
-        }
-
-        /// <summary>
-        /// Select all car claims, filtered by if it's archived or not
         /// </summary>
-        /// <param name="shouldBeArchived"> If it should the archived or the unarchived</param>
-        /// <returns> A list of filtered claims </returns>
-        public string SelectListAllCarClaimsFiltered(bool shouldBeArchived)
+        /// <param name="wantsArchived"> if the searched claims should be archived or not </param>
+        /// <returns></returns>
+        public string GetClaimsList(bool wantsArchived)
         {
             SQLiteCommand selectCommand = CreateCommand($@"
-                SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims JOIN clients
-                WHERE claims.client_id = clients.client_id AND claims.archived = @archived
-            ",
-                ("@archived", shouldBeArchived)
+                SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims 
+                    JOIN clients ON clients.client_id = claims.client_id
+                WHERE claims.client_id = clients.client_id 
+                    AND claims.archived = @archived
+            ", 
+                ("@archived", wantsArchived)
             );
 
             return SelectQuery(selectCommand);
@@ -122,14 +113,17 @@ namespace app_reclamos_seguros.Model
         /// JSON formated string:
         /// [ { ...claimTableRow, ...clientsTableRow, ...vehiclesTableRow, ...policiesTableRow} ]
         /// </returns>
-        public string SelectCarClaimByNumber(int claimNumber) 
+        public string GetByID(int claimNumber) 
         {
-            SQLiteCommand selectCommand = CreateCommand( @"
-                SELECT * FROM claims JOIN clients, vehicles, policies 
+            SQLiteCommand selectCommand = CreateCommand(@"
+                SELECT * FROM claims 
+                    JOIN clients ON clients.client_id = claims.client_id
+                    JOIN vehicles ON vehicles.vehicle_id = claims.vehicle_id 
+                    JOIN policies ON policies.policy_id = claims.policy_id 
                 WHERE claims.claim_number = @claimID
-                AND claims.client_id = clients.client_id 
-                AND claims.vehicle_id = vehicles.vehicle_id 
-                AND claims.policy_id = policies.policy_id
+                    AND claims.client_id = clients.client_id 
+                    AND claims.vehicle_id = vehicles.vehicle_id 
+                    AND claims.policy_id = policies.policy_id
             ",
                 ("@claimID", claimNumber)
             );
@@ -138,70 +132,16 @@ namespace app_reclamos_seguros.Model
         }
 
         /// <summary>
-        /// Returns a list of all the entries of a specified claim, identifyed by the claim number
-        /// </summary>
-        /// <param name="claimNumber"> The claim number asigned by the insurance company </param>
-        /// <returns>
-        /// JSON formated string:
-        /// [ {"entry_id": int, "claim_id": int, "comment": string, "date_and_time": string(UTC−03:00)} ]
-        /// </returns>
-        /// <exception cref="DatabaseException"></exception>
-        public string SelectClaimEntries(int claimNumber) 
-        {
-            // identify the claim's database id, for later use in the search for the entries
-            int claimID = SelectFromEntityGetID("claims", "claim_id", "claim_number", claimNumber);
-
-            // if the claim exists in the database
-            if (claimID != -1)
-            {
-                SQLiteCommand selectCommand = new SQLiteCommand(@"
-                    SELECT * FROM claim_entries WHERE claim_entries.claim_id = @claim
-                ");
-                selectCommand.Parameters.AddWithValue("@claim", claimID);
-
-                return SelectQuery(selectCommand);
-            }
-            else
-            {
-                throw new DatabaseException($"The claim {claimNumber} couldn't be found", new InvalidOperationException());
-            }
-        }
-
-        /// <summary>
-        /// Insert a new comment entry in the database for a specific claim 
-        /// </summary>
-        /// <param name="newReport"> The new entry object to be saved </param>
-        /// <exception cref="DatabaseException"> The database doesn't have a claim with the specified number </exception>
-        public void InsertNewClaimReportEntry(ClaimReportEntry newReport)
-        {
-            // identify the claim's database id, for later use in the search for the entries
-            int claimID = SelectFromEntityGetID("claims", "claim_id", "claim_number", newReport.ClaimNumber);
-            bool isArchived = IsArchived(newReport.ClaimNumber);
-            
-            if (claimID == -1)
-                throw new DatabaseException($"The claim {newReport.ClaimNumber} couldn't be found", new InvalidOperationException());
-            if (isArchived)
-                throw new DatabaseException($"The claim {newReport.ClaimNumber} is archived and cant receive new entries", new InvalidOperationException());
-
-            SQLiteCommand reportCommand = CreateCommand(
-                    "INSERT INTO claim_entries (claim_id, comment, date_and_time) VALUES (@claim, @comment, @datetime)",
-                    ("@claim", claimID),
-                    ("@comment", newReport.Comment),
-                    ("@datetime", newReport.DateAndTime)
-                );
-            InsertQuery(reportCommand);
-        }
-
-        /// <summary>
         /// Inserts the complete data of a claim into the database
         /// </summary>
         /// <param name="claimData"> the object containing the claim's data </param>
         /// <exception cref="DatabaseException"> A claim with the same claim number already exists in the database </exception>
-        public void InsertNewCarClaim(VehicleClaim claimData)
-        {;
+        public void SetNewClaim(VehicleClaim claimData)
+        {
+            ;
             bool claimExists = RecordExists("claims", "claim_number", claimData.ClaimNumber);
 
-            if (claimExists) 
+            if (claimExists)
             {
                 throw new DatabaseException($"The claim {claimData.ClaimNumber} already exists in the database", new InvalidOperationException());
             }
@@ -273,6 +213,61 @@ namespace app_reclamos_seguros.Model
 
                 InsertQuery(fullCommand);
             }
+        }
+
+        /// <summary>
+        /// Returns a list of all the entries of a specified claim, identifyed by the claim number
+        /// </summary>
+        /// <param name="claimNumber"> The claim number asigned by the insurance company </param>
+        /// <returns>
+        /// JSON formated string:
+        /// [ {"entry_id": int, "claim_id": int, "comment": string, "date_and_time": string(UTC−03:00)} ]
+        /// </returns>
+        /// <exception cref="DatabaseException"></exception>
+        public string GetAllReportsByID(int claimNumber) 
+        {
+            // identify the claim's database id, for later use in the search for the entries
+            int claimID = SelectFromEntityGetID("claims", "claim_id", "claim_number", claimNumber);
+
+            // if the claim exists in the database
+            if (claimID != -1)
+            {
+                SQLiteCommand selectCommand = new SQLiteCommand(@"
+                    SELECT * FROM claim_entries WHERE claim_entries.claim_id = @claim
+                ");
+                selectCommand.Parameters.AddWithValue("@claim", claimID);
+
+                return SelectQuery(selectCommand);
+            }
+            else
+            {
+                throw new DatabaseException($"The claim {claimNumber} couldn't be found", new InvalidOperationException());
+            }
+        }
+
+        /// <summary>
+        /// Insert a new comment entry in the database for a specific claim 
+        /// </summary>
+        /// <param name="newReport"> The new entry object to be saved </param>
+        /// <exception cref="DatabaseException"> The database doesn't have a claim with the specified number </exception>
+        public void SetNewReport(ClaimReportEntry newReport)
+        {
+            // identify the claim's database id, for later use in the search for the entries
+            int claimID = SelectFromEntityGetID("claims", "claim_id", "claim_number", newReport.ClaimNumber);
+            bool isArchived = IsArchived(newReport.ClaimNumber);
+            
+            if (claimID == -1)
+                throw new DatabaseException($"The claim {newReport.ClaimNumber} couldn't be found", new InvalidOperationException());
+            if (isArchived)
+                throw new DatabaseException($"The claim {newReport.ClaimNumber} is archived and cant receive new entries", new InvalidOperationException());
+
+            SQLiteCommand reportCommand = CreateCommand(
+                    "INSERT INTO claim_entries (claim_id, comment, date_and_time) VALUES (@claim, @comment, @datetime)",
+                    ("@claim", claimID),
+                    ("@comment", newReport.Comment),
+                    ("@datetime", newReport.DateAndTime)
+                );
+            InsertQuery(reportCommand);
         }
 
         /// <summary>
