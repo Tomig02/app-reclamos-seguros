@@ -13,10 +13,11 @@ namespace app_reclamos_seguros.Controllers
     [Route("[controller]")]
     public class ClaimController : ControllerBase
     {
-        private DBManager dbManager = new DBManager();
+        private IClaimsRepository dbManager;
         private readonly ILogger<ClaimController> _logger;
-        public ClaimController(ILogger<ClaimController> logger)
+        public ClaimController(ILogger<ClaimController> logger, IClaimsRepository repository)
         {
+            dbManager = repository;
             _logger = logger;
         }
 
@@ -34,7 +35,7 @@ namespace app_reclamos_seguros.Controllers
             }
             else
             {
-                string jsonString = dbManager.SelectCarClaimByNumber((int)claimID);
+                string jsonString = dbManager.GetByID((int)claimID);
 
                 if (jsonString == "" || jsonString == "[]")
                 {
@@ -76,8 +77,11 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaims()
         {
-            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.SelectListAllCarClaims());
-            return Ok(search);
+            ClaimSearchResultDTO searchFirst = new ClaimSearchResultDTO(dbManager.GetActiveClaimsList());
+            ClaimSearchResultDTO searchSecond = new ClaimSearchResultDTO(dbManager.GetArchivedClaimsList());
+            searchFirst.Combine(searchSecond);
+            
+            return Ok(searchFirst);
         }
 
         /// <summary>
@@ -87,7 +91,7 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims/Active")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaimsActive()
         {
-            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.SelectListAllCarClaimsFiltered(shouldBeArchived:false));
+            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.GetActiveClaimsList());
             return Ok(search);
         }
 
@@ -98,41 +102,8 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims/Archived")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaimsArchived()
         {
-            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.SelectListAllCarClaimsFiltered(shouldBeArchived:true));
+            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.GetArchivedClaimsList());
             return Ok(search);
-        }
-
-        /// <summary>
-        /// Search for all the event entries related to the specified claim number
-        /// </summary>
-        /// <param name="claimNum"> The number asigned to the claim by the insurance company </param>
-        /// <returns></returns>
-        [HttpGet] [Route("ClaimEntries/{claimNum}")]
-        public ActionResult<ClaimReportEntryDTO[]> GetAllClaimEntries(int claimNum)
-        {
-            try
-            {
-                string entriesJson = dbManager.SelectClaimEntries(claimNum);
-                JArray a = JArray.Parse(entriesJson);
-
-                // parse the json array into the claim entry dto
-                List<ClaimReportEntryDTO> entryList = new List<ClaimReportEntryDTO>();
-                foreach (JObject item in JArray.Parse(entriesJson))
-                {
-                    entryList.Add(new ClaimReportEntryDTO(
-                        (string) item.GetValue("comment")!, 
-                        claimNum, 
-                        (DateTime)item.GetValue("date_and_time")!)
-                    );
-                }
-
-                return Ok(entryList);
-            }
-            catch (DatabaseException ex)
-            {
-                return BadRequest($"The database couldnt process the request: {ex.Message}");
-            }
-            
         }
 
         /// <summary>
@@ -172,7 +143,7 @@ namespace app_reclamos_seguros.Controllers
 
             try 
             { 
-                dbManager.InsertNewCarClaim(newClaim);
+                dbManager.SetNewClaim(newClaim);
                 return Ok("Saved succesfully");
             }
             catch(DatabaseException ex) 
@@ -182,40 +153,16 @@ namespace app_reclamos_seguros.Controllers
         }
 
         /// <summary>
-        /// Receive the data of a new report entry of a claim, and save it into the database
+        /// Mark an existing claim as archived
         /// </summary>
-        /// <param name="dto"> The data of a claim's new report entry </param>
+        /// <param name="claimNum"> the insurance-assigned number of the claim to archive </param>
         /// <returns> The resulting state of the requested action </returns>
-        [HttpPost][Route("NewReportEntry")]
-        public IActionResult AddNewEntryToClaim([FromBody] ClaimReportEntryDTO dto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var newEntry = new ClaimReportEntry(
-                dto.Comment,
-                dto.ClaimNumber
-            );
-
-            try
-            {
-                dbManager.InsertNewClaimReportEntry(newEntry);
-                return Ok("Saved succesfully");
-            }
-            catch (DatabaseException ex)
-            {
-                return BadRequest($"The database couldnt process the request: {ex.Message}");
-            }
-        }
-
         [HttpPost][Route("ArchiveClaim/{claimNum}")]
         public IActionResult ArchiveClaim( int claimNum)
         {
             try
             {
-                dbManager.ArchiveClaim(claimNum);
+                dbManager.SetArchived(claimNum, true);
                 return Ok("Archived succesfully");
             }
             catch(DatabaseException ex)

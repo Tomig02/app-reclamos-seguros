@@ -1,3 +1,4 @@
+using app_reclamos_seguros.Model;
 using Microsoft.AspNetCore.Cors;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,6 +27,8 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod();
         });
 });
+
+builder.Services.AddSingleton<IClaimsRepository, ClaimsRepositorySQLite>();
 
 var app = builder.Build();
 
