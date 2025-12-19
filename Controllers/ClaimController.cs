@@ -77,8 +77,8 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaims()
         {
-            ClaimSearchResultDTO searchFirst = new ClaimSearchResultDTO(dbManager.GetActiveClaimsList());
-            ClaimSearchResultDTO searchSecond = new ClaimSearchResultDTO(dbManager.GetArchivedClaimsList());
+            ClaimSearchResultDTO searchFirst = new ClaimSearchResultDTO(dbManager.GetClaimsList(false));
+            ClaimSearchResultDTO searchSecond = new ClaimSearchResultDTO(dbManager.GetClaimsList(true));
             searchFirst.Combine(searchSecond);
             
             return Ok(searchFirst);
@@ -91,7 +91,7 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims/Active")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaimsActive()
         {
-            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.GetActiveClaimsList());
+            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.GetClaimsList(false));
             return Ok(search);
         }
 
@@ -102,7 +102,7 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims/Archived")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaimsArchived()
         {
-            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.GetArchivedClaimsList());
+            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.GetClaimsList(true));
             return Ok(search);
         }
 

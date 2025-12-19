@@ -5,8 +5,7 @@
         // claim
         public abstract void SetArchived(int claimNum, bool isArchived);
         public abstract void SetNewClaim(VehicleClaim claimData);
-        public abstract string GetActiveClaimsList();
-        public abstract string GetArchivedClaimsList();
+        public abstract string GetClaimsList(bool wantsArchived);
         public abstract string GetByID(int claimNum);
 
         // entries

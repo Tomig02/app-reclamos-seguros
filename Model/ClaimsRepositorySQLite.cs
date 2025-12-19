@@ -86,33 +86,21 @@ namespace app_reclamos_seguros.Model
         }
 
         /// <summary>
-        /// Returns a reduced set of the data of a stored claim, meant for identifying a claim
-        /// </summary>
-        /// <returns> 
         /// JSON formated string: 
         /// [ {"claim_number": int, "date_and_hour": string(UTC−03:00), "name": string, "surname": string}, ... ]
-        /// </returns>
-        public string GetActiveClaimsList()
-        {
-            SQLiteCommand selectCommand = CreateCommand($@"
-                SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims JOIN clients
-                WHERE claims.client_id = clients.client_id AND claims.archived = false
-            ");
-
-            return SelectQuery(selectCommand);
-        }
-
-        /// <summary>
-        /// Select all car claims, filtered by if it's archived
         /// </summary>
-        /// <returns> A list of filtered claims </returns>
-        /// 
-        public string GetArchivedClaimsList()
+        /// <param name="wantsArchived"> if the searched claims should be archived or not </param>
+        /// <returns></returns>
+        public string GetClaimsList(bool wantsArchived)
         {
             SQLiteCommand selectCommand = CreateCommand($@"
-                SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims JOIN clients
-                WHERE claims.client_id = clients.client_id AND claims.archived = true
-            ");
+                SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims 
+                    JOIN clients ON clients.client_id = claims.client_id
+                WHERE claims.client_id = clients.client_id 
+                    AND claims.archived = @archived
+            ", 
+                ("@archived", wantsArchived)
+            );
 
             return SelectQuery(selectCommand);
         }
@@ -127,12 +115,15 @@ namespace app_reclamos_seguros.Model
         /// </returns>
         public string GetByID(int claimNumber) 
         {
-            SQLiteCommand selectCommand = CreateCommand( @"
-                SELECT * FROM claims JOIN clients, vehicles, policies 
+            SQLiteCommand selectCommand = CreateCommand(@"
+                SELECT * FROM claims 
+                    JOIN clients ON clients.client_id = claims.client_id
+                    JOIN vehicles ON vehicles.vehicle_id = claims.vehicle_id 
+                    JOIN policies ON policies.policy_id = claims.policy_id 
                 WHERE claims.claim_number = @claimID
-                AND claims.client_id = clients.client_id 
-                AND claims.vehicle_id = vehicles.vehicle_id 
-                AND claims.policy_id = policies.policy_id
+                    AND claims.client_id = clients.client_id 
+                    AND claims.vehicle_id = vehicles.vehicle_id 
+                    AND claims.policy_id = policies.policy_id
             ",
                 ("@claimID", claimNumber)
             );
