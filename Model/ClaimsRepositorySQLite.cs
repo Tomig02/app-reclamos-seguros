@@ -385,7 +385,7 @@ namespace app_reclamos_seguros.Model
                     return -1;
                 return result[0][selectColumn]!.Value<int>();
             }
-            catch (DatabaseException ex) { throw; }
+            catch (DatabaseException) { throw; }
         }
 
         /// <summary>
@@ -419,5 +419,6 @@ namespace app_reclamos_seguros.Model
     public class DatabaseException : Exception
     {
         public DatabaseException(string message, Exception innerException) : base(message, innerException) {}
+        public DatabaseException() {}
     }
 }

@@ -28,11 +28,6 @@ namespace app_reclamos_seguros.Model
         public string Coverage  { get; private set; }
 
         /// <summary>
-        /// Constructor meant for [frombody] deserialization
-        /// </summary>
-        public Claim() { }
-
-        /// <summary>
         /// The constructor meant for the creation of a claim with data coming from the database
         /// </summary>
         /// <param name="jsonString"> JSON formated string with the data of the claim</param>

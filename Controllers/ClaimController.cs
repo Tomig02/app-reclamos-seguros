@@ -141,14 +141,17 @@ namespace app_reclamos_seguros.Controllers
                 archived: false
             );
 
-            try 
-            { 
+            try
+            {
                 dbManager.SetNewClaim(newClaim);
                 return Ok("Saved succesfully");
             }
-            catch(DatabaseException ex) 
-            { 
-                return BadRequest($"The database couldnt process the request: {ex.Message}"); 
+            catch (DatabaseException ex)
+            {
+                return BadRequest($"The database couldnt process the request: {ex.Message}");
+            }
+            catch (Exception ex) {
+                return BadRequest($"There was an unexpected error during the request: {ex.Message}");
             }
         }
 

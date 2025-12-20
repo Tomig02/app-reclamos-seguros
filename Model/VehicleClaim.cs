@@ -15,11 +15,6 @@ namespace app_reclamos_seguros.Model
         public string registeredOwner;
 
         /// <summary>
-        /// Constructor meant for [frombody] deserialization
-        /// </summary>
-        public VehicleClaim() : base() { }
-
-        /// <summary>
         /// Constructor meant for instantiation by the database, using a JON formated string
         /// </summary>
         /// <param name="jsonString"> JSON formated string with the data of the claim</param>
