@@ -1,6 +1,7 @@
 ﻿using app_reclamos_seguros.Model;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 
 namespace app_reclamos_seguros.Controllers
 {
@@ -62,21 +63,19 @@ namespace app_reclamos_seguros.Controllers
         {
             try
             {
-                string entriesJson = dbManager.GetAllReportsByID(claimNum);
-                JArray a = JArray.Parse(entriesJson);
+                List<ClaimReportEntry> entryList = dbManager.GetAllReportsByID(claimNum);
 
-                // parse the json array into the claim entry dto
-                List<ClaimReportEntryDTO> entryList = new List<ClaimReportEntryDTO>();
-                foreach (JObject item in JArray.Parse(entriesJson))
+                List<ClaimReportEntryDTO> dtoList = new List<ClaimReportEntryDTO>();
+                foreach (ClaimReportEntry entry in entryList)
                 {
-                    entryList.Add(new ClaimReportEntryDTO(
-                        (string)item.GetValue("comment")!,
-                        claimNum,
-                        (DateTime)item.GetValue("date_and_time")!)
-                    );
+                    dtoList.Add(new ClaimReportEntryDTO(
+                        Comment: entry.Comment, 
+                        ClaimNumber: entry.ClaimNumber,
+                        DateAndTime: entry.DateAndTime
+                    ));
                 }
 
-                return Ok(entryList);
+                return Ok(dtoList);
             }
             catch (DatabaseException ex)
             {

@@ -35,16 +35,12 @@ namespace app_reclamos_seguros.Controllers
             }
             else
             {
-                string jsonString = dbManager.GetByID((int)claimID);
+                VehicleClaim? vClaim = dbManager.GetByID((int)claimID);
 
-                if (jsonString == "" || jsonString == "[]")
+                if (vClaim != null)
                 {
-                    return BadRequest("Claim ID doesn't exist");
-                }
-                else 
-                {
-                    VehicleClaim vClaim = new VehicleClaim(jsonString);
-                    VehicleClaimDTO vClaimDTO = new VehicleClaimDTO() { 
+                    VehicleClaimDTO vClaimDTO = new VehicleClaimDTO()
+                    {
                         ClaimNumber = vClaim.ClaimNumber,
                         City = vClaim.City,
                         ClientDNI = vClaim.ClientDNI,
@@ -56,17 +52,19 @@ namespace app_reclamos_seguros.Controllers
                         Description = vClaim.Description,
                         Direction = vClaim.Direction,
                         Email = vClaim.Email,
-                        LicensePlate = vClaim.licensePlate,
+                        LicensePlate = vClaim.LicensePlate,
                         PhoneNumber = vClaim.PhoneNumber,
                         PolicyNumber = vClaim.PolicyNumber,
-                        RegisteredOwner = vClaim.registeredOwner,
-                        VehicleBrand = vClaim.vehicleBrand,
-                        VehicleModel = vClaim.vehicleModel,
+                        RegisteredOwner = vClaim.RegisteredOwner,
+                        VehicleBrand = vClaim.VehicleBrand,
+                        VehicleModel = vClaim.VehicleModel,
                         Archived = vClaim.Archived
                     };
 
                     return Ok(vClaimDTO);
                 }
+                else
+                    return BadRequest("No registry matches the specified ID");
             }
         }
 
@@ -77,11 +75,14 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaims()
         {
-            ClaimSearchResultDTO searchFirst = new ClaimSearchResultDTO(dbManager.GetClaimsList(false));
-            ClaimSearchResultDTO searchSecond = new ClaimSearchResultDTO(dbManager.GetClaimsList(true));
-            searchFirst.Combine(searchSecond);
+            ClaimSearchResult searchFirst = dbManager.GetClaimsList(false);
+            ClaimSearchResult searchSecond = dbManager.GetClaimsList(true);
+
+            ClaimSearchResultDTO searchFirstDTO = new ClaimSearchResultDTO(searchFirst.ResultsList);
+            ClaimSearchResultDTO searchSecondDTO = new ClaimSearchResultDTO(searchSecond.ResultsList);
+            searchFirstDTO.Combine(searchSecondDTO);
             
-            return Ok(searchFirst);
+            return Ok(searchFirstDTO);
         }
 
         /// <summary>
@@ -91,7 +92,9 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims/Active")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaimsActive()
         {
-            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.GetClaimsList(false));
+            ClaimSearchResult result = dbManager.GetClaimsList(false);
+            ClaimSearchResultDTO search = new ClaimSearchResultDTO(result.ResultsList);
+
             return Ok(search);
         }
 
@@ -102,7 +105,8 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims/Archived")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaimsArchived()
         {
-            ClaimSearchResultDTO search = new ClaimSearchResultDTO(dbManager.GetClaimsList(true));
+            ClaimSearchResult result = dbManager.GetClaimsList(true);
+            ClaimSearchResultDTO search = new ClaimSearchResultDTO(result.ResultsList);
             return Ok(search);
         }
 
