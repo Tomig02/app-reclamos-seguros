@@ -35,36 +35,43 @@ namespace app_reclamos_seguros.Controllers
             }
             else
             {
-                VehicleClaim? vClaim = dbManager.GetByID((int)claimID);
-
-                if (vClaim != null)
+                try
                 {
-                    VehicleClaimDTO vClaimDTO = new VehicleClaimDTO()
-                    {
-                        ClaimNumber = vClaim.ClaimNumber,
-                        City = vClaim.City,
-                        ClientDNI = vClaim.ClientDNI,
-                        ClientName = vClaim.ClientName,
-                        ClientSurname = vClaim.ClientSurname,
-                        CompanyName = vClaim.CompanyName,
-                        Coverage = vClaim.Coverage,
-                        DateAndHour = vClaim.DateAndHour,
-                        Description = vClaim.Description,
-                        Direction = vClaim.Direction,
-                        Email = vClaim.Email,
-                        LicensePlate = vClaim.LicensePlate,
-                        PhoneNumber = vClaim.PhoneNumber,
-                        PolicyNumber = vClaim.PolicyNumber,
-                        RegisteredOwner = vClaim.RegisteredOwner,
-                        VehicleBrand = vClaim.VehicleBrand,
-                        VehicleModel = vClaim.VehicleModel,
-                        Archived = vClaim.Archived
-                    };
+                    VehicleClaim? vClaim = dbManager.GetByID((int)claimID);
 
-                    return Ok(vClaimDTO);
+                    if (vClaim != null)
+                    {
+                        VehicleClaimDTO vClaimDTO = new VehicleClaimDTO()
+                        {
+                            ClaimNumber = vClaim.ClaimNumber,
+                            City = vClaim.City,
+                            ClientDNI = vClaim.ClientDNI,
+                            ClientName = vClaim.ClientName,
+                            ClientSurname = vClaim.ClientSurname,
+                            CompanyName = vClaim.CompanyName,
+                            Coverage = vClaim.Coverage,
+                            DateAndHour = vClaim.DateAndHour,
+                            Description = vClaim.Description,
+                            Direction = vClaim.Direction,
+                            Email = vClaim.Email,
+                            LicensePlate = vClaim.LicensePlate,
+                            PhoneNumber = vClaim.PhoneNumber,
+                            PolicyNumber = vClaim.PolicyNumber,
+                            RegisteredOwner = vClaim.RegisteredOwner,
+                            VehicleBrand = vClaim.VehicleBrand,
+                            VehicleModel = vClaim.VehicleModel,
+                            Archived = vClaim.Archived
+                        };
+
+                        return Ok(vClaimDTO);
+                    }
+                    else
+                        return BadRequest("No registry matches the specified ID");
                 }
-                else
-                    return BadRequest("No registry matches the specified ID");
+                catch (Exception ex) 
+                {
+                    return BadRequest(ex.Message);
+                }
             }
         }
 
@@ -75,14 +82,21 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaims()
         {
-            ClaimSearchResult searchFirst = dbManager.GetClaimsList(false);
-            ClaimSearchResult searchSecond = dbManager.GetClaimsList(true);
+            try
+            {
+                ClaimSearchResult searchFirst = dbManager.GetClaimsList(false);
+                ClaimSearchResult searchSecond = dbManager.GetClaimsList(true);
 
-            ClaimSearchResultDTO searchFirstDTO = new ClaimSearchResultDTO(searchFirst.ResultsList);
-            ClaimSearchResultDTO searchSecondDTO = new ClaimSearchResultDTO(searchSecond.ResultsList);
-            searchFirstDTO.Combine(searchSecondDTO);
-            
-            return Ok(searchFirstDTO);
+                ClaimSearchResultDTO searchFirstDTO = new ClaimSearchResultDTO(searchFirst.ResultsList);
+                ClaimSearchResultDTO searchSecondDTO = new ClaimSearchResultDTO(searchSecond.ResultsList);
+                searchFirstDTO.Combine(searchSecondDTO);
+
+                return Ok(searchFirstDTO);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"The database couldnt process the request: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -92,10 +106,17 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims/Active")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaimsActive()
         {
-            ClaimSearchResult result = dbManager.GetClaimsList(false);
-            ClaimSearchResultDTO search = new ClaimSearchResultDTO(result.ResultsList);
+            try
+            {
+                ClaimSearchResult result = dbManager.GetClaimsList(false);
+                ClaimSearchResultDTO search = new ClaimSearchResultDTO(result.ResultsList);
 
-            return Ok(search);
+                return Ok(search);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"The database couldnt process the request: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -105,9 +126,17 @@ namespace app_reclamos_seguros.Controllers
         [HttpGet] [Route("AllClaims/Archived")]
         public ActionResult<ClaimSearchResultDTO> GetAllClaimsArchived()
         {
-            ClaimSearchResult result = dbManager.GetClaimsList(true);
-            ClaimSearchResultDTO search = new ClaimSearchResultDTO(result.ResultsList);
-            return Ok(search);
+            try
+            {
+                ClaimSearchResult result = dbManager.GetClaimsList(true);
+                ClaimSearchResultDTO search = new ClaimSearchResultDTO(result.ResultsList);
+                return Ok(search);
+            }
+            catch (Exception ex) 
+            {
+                return BadRequest($"The database couldnt process the request: {ex.Message}");
+            }
+
         }
 
         /// <summary>
