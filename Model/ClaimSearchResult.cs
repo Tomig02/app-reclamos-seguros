@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System.ComponentModel.DataAnnotations;
+using System.Xml.Linq;
 
 namespace app_reclamos_seguros.Model
 {
@@ -7,39 +8,38 @@ namespace app_reclamos_seguros.Model
     /// Data transfer object representing the search result of a query for all claims, 
     /// it holds reduced information meant for identifying the selected claims
     /// </summary>
-    public class ClaimSearchResultDTO
+    public class ClaimSearchResult
     {
-        [Required]
-        public List<ClaimSearchItem> ResultsList { get; set; }
+        // add info of the total results, if contains archived, etc.
 
-        public ClaimSearchResultDTO(List<ClaimSearchItem> newItemsList)
+        public List<ClaimSearchItem> ResultsList { get; private set; }
+
+        public ClaimSearchResult(List<ClaimSearchItem> newItemsList)
         {
             ResultsList = newItemsList;
         }
 
-        public void Combine(ClaimSearchResultDTO newResults) 
+        public void Combine(ClaimSearchResult newResults)
         {
             ResultsList = [.. ResultsList, .. newResults.ResultsList];
         }
     }
 
-    public class ClaimSearchItemDTO
+    /// <summary>
+    /// Represents a search result holding identifying data for a claim
+    /// </summary>
+    public class ClaimSearchItem
     {
-        [Required]
-        public int ClaimID { get; set; }
-        [Required]
-        public DateTime DateAndHour { get; set; }
-        [Required]
-        public string Name { get; set; }
-        [Required]
-        public string Surname { get; set; }
-        [Required]
-        public bool Archived { get; set; }
+        public int ClaimID { get; private set; }
+        public DateTime DateAndHour { get; private set; }
+        public string Name { get; private set; }
+        public string Surname { get; private set; }
+        public bool Archived { get; private set; }
 
         /// <summary>
         /// Creates a search result item holding specific data of a claim for later id
         /// </summary>
-        public ClaimSearchItemDTO(int claimNumber, DateTime dateAndHour, string name, string surname, bool archived)
+        public ClaimSearchItem(int claimNumber, DateTime dateAndHour, string name, string surname, bool archived)
         {
             this.ClaimID = claimNumber;
             this.DateAndHour = dateAndHour;

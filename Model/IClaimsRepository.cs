@@ -5,11 +5,11 @@
         // claim
         public abstract void SetArchived(int claimNum, bool isArchived);
         public abstract void SetNewClaim(VehicleClaim claimData);
-        public abstract string GetClaimsList(bool wantsArchived);
-        public abstract string GetByID(int claimNum);
+        public abstract ClaimSearchResult GetClaimsList(bool wantsArchived);
+        public abstract VehicleClaim? GetByID(int claimNum);
 
         // entries
-        public abstract string GetAllReportsByID(int claimNumber);
+        public abstract List<ClaimReportEntry> GetAllReportsByID(int claimNumber);
         public abstract void SetNewReport(ClaimReportEntry newReport);
     }
 }

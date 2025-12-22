@@ -1,4 +1,6 @@
 
+using System.Runtime.InteropServices;
+
 namespace app_reclamos_seguros.Model
 {
     /// <summary>
@@ -15,11 +17,15 @@ namespace app_reclamos_seguros.Model
         /// Constructor for creating entries of events related to a claim.
         /// DateTime will be the current local time
         /// </summary>
-        public ClaimReportEntry(string comment, int claimNumber) 
+        public ClaimReportEntry(string comment, int claimNumber, DateTime? dateAndTime = null) 
         {
             this.Comment = comment;
             this.ClaimNumber = claimNumber;
-            this.DateAndTime = DateTime.Now;
+
+            if (dateAndTime != null)
+                this.DateAndTime = (DateTime) dateAndTime;
+            else
+                this.DateAndTime = DateTime.Now;
         }
     }
 }
