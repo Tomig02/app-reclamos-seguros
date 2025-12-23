@@ -15,19 +15,19 @@ Accept: application/json
 
 ###
 
-GET {{hostURL}}/Claim/Claim/4322/
+GET {{hostURL}}/Claim/Claim/4323/
 Accept: application/json
 
 ###
 
-POST {{hostURL}}/Claim/ArchiveClaim/4321/
+POST {{hostURL}}/Claim/ArchiveClaim/4323/
 Accept: application/json
 
 ###
 POST {{hostURL}}/Claim/NewClaim/
 Content-Type: application/json
 {
-    "claimNumber": 4323, 
+    "claimNumber": 4333, 
     "description": "some description", 
     "direction": "myplace", 
     "city": "monte", 
@@ -48,14 +48,14 @@ Content-Type: application/json
 
 ###
 
-GET {{hostURL}}/Claim/ClaimEntries/4321
+GET {{hostURL}}/ClaimReport/ClaimEntries/4323
 Accept: application/json
 
 ###
 
-POST {{hostURL}}/Claim/NewReportEntry
+POST {{hostURL}}/ClaimReport/NewReportEntry
 Content-Type: application/json
 {
-    "ClaimNumber": 4321, 
+    "ClaimNumber": 4333, 
     "Comment": "some comment"
 }

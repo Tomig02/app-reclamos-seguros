@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Data.SQLite;
+using System.Xml.Linq;
 
 namespace app_reclamos_seguros.Model
 {
@@ -91,7 +92,7 @@ namespace app_reclamos_seguros.Model
         /// </summary>
         /// <param name="wantsArchived"> if the searched claims should be archived or not </param>
         /// <returns></returns>
-        public string GetClaimsList(bool wantsArchived)
+        public ClaimSearchResult GetClaimsList(bool wantsArchived)
         {
             SQLiteCommand selectCommand = CreateCommand($@"
                 SELECT claims.claim_number, claims.date_and_hour, claims.archived, clients.name, clients.surname FROM claims 
@@ -102,7 +103,22 @@ namespace app_reclamos_seguros.Model
                 ("@archived", wantsArchived)
             );
 
-            return SelectQuery(selectCommand);
+            List<ClaimSearchItem> itemsList = new List<ClaimSearchItem>();
+            DataTable dataTable = SelectQuery(selectCommand);
+
+            foreach (DataRow row in dataTable.AsEnumerable())
+            {
+                ClaimSearchItem result = new ClaimSearchItem(
+                    claimNumber: (int)(long) row.Field<Int64>("claim_number")!, 
+                    dateAndHour: row.Field<DateTime>("date_and_hour")!, 
+                    name: row.Field<string>("name")!, 
+                    surname: row.Field<string>("surname")!, 
+                    archived: row.Field<bool>("archived")!
+                );
+                itemsList.Add(result);
+            }
+
+            return new ClaimSearchResult(itemsList);
         }
 
         /// <summary>
@@ -113,7 +129,7 @@ namespace app_reclamos_seguros.Model
         /// JSON formated string:
         /// [ { ...claimTableRow, ...clientsTableRow, ...vehiclesTableRow, ...policiesTableRow} ]
         /// </returns>
-        public string GetByID(int claimNumber) 
+        public VehicleClaim? GetByID(int claimNumber) 
         {
             SQLiteCommand selectCommand = CreateCommand(@"
                 SELECT * FROM claims 
@@ -127,8 +143,32 @@ namespace app_reclamos_seguros.Model
             ",
                 ("@claimID", claimNumber)
             );
-            
-            return SelectQuery(selectCommand);
+
+            DataRow? rowData = SelectQuery(selectCommand).AsEnumerable().FirstOrDefault();
+
+            if (rowData != null)
+                return new VehicleClaim(
+                    claimNumber: (int)(long) rowData.Field<Int64>("claim_number")!,
+                    description: rowData.Field<string>("description")!,
+                    direction: rowData.Field<string>("direction")!,
+                    city: rowData.Field<string>("city")!,
+                    dateAndHour: rowData.Field<DateTime>("date_and_hour")!,
+                    clientDNI: (int)(long)rowData.Field<Int64>("dni")!,
+                    clientName: rowData.Field<string>("name")!,
+                    clientSurname: rowData.Field<string>("surname")!,
+                    phoneNumber: (int)(long)rowData.Field<Int64>("phone_number")!,
+                    email: rowData.Field<string>("email")!,
+                    policyNumber: (int)(long)rowData.Field<Int64>("policy_number")!,
+                    companyName: rowData.Field<string>("company")!,
+                    coverage: rowData.Field<string>("coverage")!,
+                    vehicleBrand: rowData.Field<string>("brand")!,
+                    vehicleModel: rowData.Field<string>("model")!,
+                    licensePlate: rowData.Field<string>("license_plate")!,
+                    registeredOwner: rowData.Field<string>("registered_owner")!,
+                    archived: rowData.Field<bool>("archived")!
+                );
+            else
+                return null;
         }
 
         /// <summary>
@@ -148,7 +188,7 @@ namespace app_reclamos_seguros.Model
             else
             {
                 bool clientExists = RecordExists("clients", "dni", claimData.ClientDNI);
-                bool vehicleExists = RecordExists("vehicles", "license_plate", claimData.licensePlate);
+                bool vehicleExists = RecordExists("vehicles", "license_plate", claimData.LicensePlate);
                 bool policyExists = RecordExists("policies", "policy_number", claimData.PolicyNumber);
 
                 if (!clientExists)
@@ -168,10 +208,10 @@ namespace app_reclamos_seguros.Model
                 {
                     SQLiteCommand vehicleCommand = CreateCommand(
                         "INSERT INTO vehicles (brand, model, license_plate, registered_owner) VALUES (@brand, @model, @plate, @owner)",
-                        ("@brand", claimData.vehicleBrand),
-                        ("@model", claimData.vehicleModel),
-                        ("@plate", claimData.licensePlate),
-                        ("@owner", claimData.registeredOwner)
+                        ("@brand", claimData.VehicleBrand),
+                        ("@model", claimData.VehicleModel),
+                        ("@plate", claimData.LicensePlate),
+                        ("@owner", claimData.RegisteredOwner)
                     );
                     InsertQuery(vehicleCommand);
                 }
@@ -201,7 +241,7 @@ namespace app_reclamos_seguros.Model
                     FROM new_policy, new_vehicle, new_client
                     ",
                     ("@clientDNI", claimData.ClientDNI),
-                    ("@carPlate", claimData.licensePlate),
+                    ("@carPlate", claimData.LicensePlate),
                     ("@policy", claimData.PolicyNumber),
                     ("@claim", claimData.ClaimNumber),
                     ("@description", claimData.Description),
@@ -224,7 +264,7 @@ namespace app_reclamos_seguros.Model
         /// [ {"entry_id": int, "claim_id": int, "comment": string, "date_and_time": string(UTC−03:00)} ]
         /// </returns>
         /// <exception cref="DatabaseException"></exception>
-        public string GetAllReportsByID(int claimNumber) 
+        public List<ClaimReportEntry> GetAllReportsByID(int claimNumber) 
         {
             // identify the claim's database id, for later use in the search for the entries
             int claimID = SelectFromEntityGetID("claims", "claim_id", "claim_number", claimNumber);
@@ -232,12 +272,26 @@ namespace app_reclamos_seguros.Model
             // if the claim exists in the database
             if (claimID != -1)
             {
-                SQLiteCommand selectCommand = new SQLiteCommand(@"
+                SQLiteCommand selectCommand = CreateCommand(@"
                     SELECT * FROM claim_entries WHERE claim_entries.claim_id = @claim
-                ");
-                selectCommand.Parameters.AddWithValue("@claim", claimID);
+                ", 
+                    ("@claim", claimID)
+                );
 
-                return SelectQuery(selectCommand);
+                List<ClaimReportEntry> resultingList = new List<ClaimReportEntry>();
+                EnumerableRowCollection rowsData = SelectQuery(selectCommand).AsEnumerable();
+                
+                foreach(DataRow row in rowsData)
+                {
+                    ClaimReportEntry entry = new ClaimReportEntry(
+                            comment: row.Field<string>("comment")!, 
+                            claimNumber: (int)(long) row.Field<Int64>("claim_id")!,
+                            dateAndTime: row.Field<DateTime>("date_and_time")!
+                    );
+                    resultingList.Add(entry);
+                }
+
+                return resultingList;
             }
             else
             {
@@ -319,10 +373,10 @@ namespace app_reclamos_seguros.Model
         /// <param name="cmd"> the command object with the query to be executed </param>
         /// <returns> a JSON formated string with the array of selected rows </returns>
         /// <exception cref="DatabaseException"> The database couldn't run the query, contains an SQLiteException </exception>
-        private string SelectQuery(SQLiteCommand cmd) 
+        private DataTable SelectQuery(SQLiteCommand cmd) 
         {
             SQLiteDataAdapter ad;
-            DataTable dt = new DataTable();
+            DataTable dt = new();
             cmd.Connection = sqlite;
 
             try
@@ -337,7 +391,7 @@ namespace app_reclamos_seguros.Model
             }
 
             sqlite.Close();
-            return ToJsonString(dt);
+            return dt;
         }
         
         /// <summary>
@@ -379,13 +433,16 @@ namespace app_reclamos_seguros.Model
 
             try
             {
-                var result = JArray.Parse(SelectQuery(command));
+                DataRow? row = SelectQuery(command).AsEnumerable().FirstOrDefault();
 
-                if (result.Count == 0)
-                    return -1;
-                return result[0][selectColumn]!.Value<int>();
+                if (row != null)
+                    return (int)(long) row.Field<Int64>(selectColumn);
+                return -1;
             }
-            catch (DatabaseException ex) { throw; }
+            catch (DatabaseException)
+            {
+                throw;
+            }
         }
 
         /// <summary>
@@ -419,5 +476,6 @@ namespace app_reclamos_seguros.Model
     public class DatabaseException : Exception
     {
         public DatabaseException(string message, Exception innerException) : base(message, innerException) {}
+        public DatabaseException() {}
     }
 }
