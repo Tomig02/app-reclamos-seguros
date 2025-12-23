@@ -1,6 +1,0 @@
-@hostURL = http://localhost:5249
-
-GET {{hostURL}}/route/
-Accept: application/json
-
-###
